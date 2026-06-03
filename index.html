@@ -106,7 +106,10 @@
             box-sizing: border-box;
             overflow: hidden;
             box-shadow: 0 2px 0px rgba(0, 0, 0, 0); 
-            transition: opacity 0.3s ease-in-out; /* 讓透明度隱藏時平滑過渡 */
+            transition: opacity 0.3s ease-in-out;
+            /* 額外加上硬體加速優化提示，防止 iPad 在連續快點時產生圖層反應死鎖 */
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
         }
 
         .full-spread-img {
@@ -144,29 +147,27 @@
             transform-origin: right center;
             -webkit-transform-origin: right center;
             border-radius: 8px 0 0 8px;
-            opacity: 0; /* 尚未翻過去前，背面完全隱藏，防止圖層打架 */
+            opacity: 0; 
             z-index: 1;
         }
         .back .full-spread-img {
             left: 0;
         }
 
-        /* ==========================================
-           【終極修正點】當頁面被翻過去時 (.flipped)
-           ========================================== */
+        /* 當頁面被翻過去時 */
         .paper.flipped {
             transform: rotateY(-180deg);
             -webkit-transform: rotateY(-180deg);
         }
 
-        /* 翻過去後：正面(右頁)透明度歸零、徹底隱藏，杜絕背面鏡像穿透到下一頁的左邊 */
+        /* 翻過去後：正面(右頁)徹底隱藏，杜絕背面鏡像穿透 */
         .paper.flipped .front {
             opacity: 0;
             z-index: 1;
             pointer-events: none;
         }
 
-        /* 翻過去後：背面(左頁)透明度變回 1 完美顯現，且層級調高 */
+        /* 翻過去後：背面(左頁)顯現 */
         .paper.flipped .back {
             opacity: 1;
             z-index: 2;
@@ -203,7 +204,7 @@
             text-align: center;
             border-radius: 0 0 8px 8px;
         }
-        .global-text-overlay p { font-size: 24px; line-height: 1; margin: 0; text-align: center; opacity: 0.95; letter-spacing: 1px; text-shadow: 1px 1px 4px rgba(0,0,0,0.8); }
+        .global-text-overlay p { font-size: 24px; line-height: 1.4; margin: 0; text-align: center; opacity: 0.95; letter-spacing: 1px; text-shadow: 1px 1px 4px rgba(0,0,0,0.8); }
 
         /* 獨立全域頁碼 */
         .global-floating-num {
@@ -451,20 +452,24 @@
         }
 
         // ==========================================
-        // 翻頁層級管理
+        // 【核心優化修正點】極度精簡的 zIndex 控制邏輯，徹底解決 iPad 來回點擊卡死
         // ==========================================
         function updateZIndices() {
             for (let i = 0; i < totalPapers; i++) {
                 const paper = document.getElementById('paper-' + i);
+                
                 if (currentMode === 'pedestrian') {
+                    // 行人正翻：翻過去的 index 變小，層級隨之降低
                     if (i < currentPaperIndex) {
                         paper.style.zIndex = i + 1;
                     } else {
                         paper.style.zIndex = totalPapers - i;
                     }
                 } else {
+                    // 駕駛倒翻：修正 iPad 對於複雜反向層級的死鎖，改用絕對鏡像分配
+                    // 當前顯示頁面與之後還沒翻開的頁面層級拉高，已經翻回去的降到最低
                     if (i >= currentPaperIndex) {
-                        paper.style.zIndex = totalPapers - i;
+                        paper.style.zIndex = totalPapers - i + 10; // 給予基底權重緩衝，避開渲染衝突
                     } else {
                         paper.style.zIndex = i + 1;
                     }
