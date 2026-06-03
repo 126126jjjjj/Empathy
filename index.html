@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
     <title>歡迎光臨，馬路格鬥場繪本</title>
     <style>
         :root {
@@ -26,6 +26,9 @@
             padding-bottom: 15px;
             height: 100vh;
             overflow: hidden;
+            
+            /* iPad Safari 3D 視角終極強化 */
+            -webkit-perspective: 3000px;
             perspective: 3000px;
             -webkit-user-select: none;
             user-select: none;
@@ -61,7 +64,7 @@
         input:checked + .slider { background-color: #bfa15f; }
         input:checked + .slider:before { transform: translateX(20px); }
 
-        /* 書本外殼與容器 */
+        /* 書本置中縮放外殼 */
         .book-wrapper {
             display: flex;
             align-items: center;
@@ -71,21 +74,25 @@
             z-index: 10;
         }
 
-        /* 核心結構：書本容器現在包含內頁、以及永遠置頂的「獨立固定字幕與頁碼」 */
+        /* 書本主容器 */
         .book-container {
             display: none;
             width: var(--total-width);
             height: var(--total-height); 
             position: relative;
+            /* 修正 iPad Pro 圖層穿透與打架：強制開啟外層的 3D 平面 */
+            -webkit-transform-style: preserve-3d;
+            transform-style: preserve-3d;
         }
 
-        /* 獨立出來的翻頁畫布舞台，與字幕剝離 */
+        /* 內頁翻轉舞台 */
         .book-stage {
             width: 100%;
             height: 100%;
             position: absolute;
             top: 0;
             left: 0;
+            -webkit-transform-style: preserve-3d;
             transform-style: preserve-3d;
             z-index: 5;
         }
@@ -96,8 +103,10 @@
             height: 100%;
             top: 0;
             left: 0;
+            -webkit-transform-style: preserve-3d;
             transform-style: preserve-3d;
             transition: transform 1.0s cubic-bezier(0.25, 1, 0.5, 1);
+            -webkit-transition: -webkit-transform 1.0s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         .page-side {
@@ -105,13 +114,17 @@
             height: 100%;
             width: var(--page-width); 
             top: 0;
-            backface-visibility: hidden;
+            /* 解決 iPad 翻頁時背面殘影與白閃 */
             -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
             box-sizing: border-box;
             overflow: hidden;
-            /* 調整了陰影範圍與透明度，讓中間點過渡更淡、更自然 */
-            box-shadow: 0 4px 0px rgba(0, 0, 0, 0); 
+            /* 依要求調淡、變柔和的中間陰影 */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25); 
             background: #111;
+            /* 強制 iPad 啟用硬體加速渲染 */
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
         }
 
         .full-spread-img {
@@ -133,6 +146,7 @@
         .front {
             left: var(--page-width);
             transform-origin: left center;
+            -webkit-transform-origin: left center;
             border-radius: 0 8px 8px 0;
         }
         .front .full-spread-img:not(.single-mode) {
@@ -142,7 +156,9 @@
         .back {
             left: 0;
             transform: rotateY(180deg);
+            -webkit-transform: rotateY(180deg);
             transform-origin: right center;
+            -webkit-transform-origin: right center;
             border-radius: 8px 0 0 8px;
         }
         .back .full-spread-img {
@@ -151,6 +167,7 @@
 
         .paper.flipped {
             transform: rotateY(-180deg);
+            -webkit-transform: rotateY(-180deg);
         }
 
         /* 封面主標題 */
@@ -168,7 +185,7 @@
             pointer-events: none;
         }
 
-        /* 【終極修正】獨立於翻頁層級之外的滿版通欄字幕：絕不切斷、不重複、置中對齊 */
+        /* 獨立滿版通欄字幕：強制移出 3D 舞台空間，放在 2D 最頂層，避免 iPad Pro 切割異常 */
         .global-text-overlay {
             position: absolute;
             bottom: 0;
@@ -176,16 +193,19 @@
             width: 100%;         
             background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 75%, rgba(0,0,0,0) 100%);
             padding: 60px 40px 35px 40px;
-            z-index: 50; /* 壓在所有人最上層 */
+            z-index: 999; /* 絕對最上層 */
             color: #fff;
             box-sizing: border-box;
             pointer-events: none;
             text-align: center;
             border-radius: 0 0 8px 8px;
+            /* 抽離 3D 渲染，確保 iPad 平面貼合 */
+            -webkit-transform: translateZ(500px);
+            transform: translateZ(500px);
         }
         .global-text-overlay p { font-size: 19px; line-height: 1.6; margin: 0; text-align: center; opacity: 0.95; letter-spacing: 1px; text-shadow: 1px 1px 4px rgba(0,0,0,0.8); }
 
-        /* 【終極修正】獨立於網頁最外層的左右頁碼：永遠不跟著翻轉顛倒 */
+        /* 獨立全域左右頁碼 */
         .global-floating-num {
             position: absolute;
             bottom: 15px;
@@ -194,8 +214,10 @@
             border-radius: 10px;
             font-size: 11px;
             color: #ccc;
-            z-index: 55;
+            z-index: 1000;
             pointer-events: none;
+            -webkit-transform: translateZ(501px);
+            transform: translateZ(501px);
         }
         .global-num-left { left: 20px; }
         .global-num-right { right: 20px; }
@@ -377,14 +399,12 @@
         }
 
         // ==========================================
-        // 【核心修正點】集中管理：根據當前頁數動態刷新「全域固定字幕與頁碼」
+        // 字幕與頁碼更新管理
         // ==========================================
         function updateGlobalOverlays() {
             let leftPageNum, rightPageNum;
 
             if (currentMode === 'pedestrian') {
-                // 正翻：當前可見的左頁是 currentPaperIndex*2，右頁是 currentPaperIndex*2 + 1
-                // 剛開始時 index=0，可見 P1 (單頁封面在右側)
                 if (currentPaperIndex === 0) {
                     leftPageNum = null;
                     rightPageNum = 1;
@@ -393,9 +413,8 @@
                     rightPageNum = (currentPaperIndex * 2) + 1;
                 }
             } else {
-                // 倒翻：阿哲視角
                 if (currentPaperIndex === totalPapers) {
-                    leftPageNum = 32; // 封底單頁在左側
+                    leftPageNum = 32; 
                     rightPageNum = null;
                 } else {
                     leftPageNum = currentPaperIndex * 2;
@@ -403,7 +422,6 @@
                 }
             }
 
-            // 更新頁碼標籤
             const pLeft = document.getElementById('global-p-left');
             const pRight = document.getElementById('global-p-right');
             
@@ -413,7 +431,6 @@
             if (rightPageNum) { pRight.innerText = `P${rightPageNum}`; pRight.style.display = 'block'; }
             else { pRight.style.display = 'none'; }
 
-            // 抓取合適的字幕內容 (優先抓取有故事敘述的那一頁)
             let activeData = null;
             if (rightPageNum) activeData = getPageData(rightPageNum);
             if ((!activeData || !activeData.desc) && leftPageNum) activeData = getPageData(leftPageNum);
@@ -454,7 +471,6 @@
                     }
                 }
             }
-            // 每次頁碼層級變更，全域字幕同步刷新
             updateGlobalOverlays();
         }
 
