@@ -22,7 +22,7 @@
             justify-content: center;
             min-height: 100vh;
             overflow: hidden;
-            perspective: 3000px; /* 提升 3D 視角相容性 */
+            perspective: 3000px;
             -webkit-user-select: none;
             user-select: none;
         }
@@ -41,7 +41,7 @@
         /* 頂部控制面板 */
         .control-panel {
             display: none; align-items: center; gap: 20px; margin-bottom: 20px;
-            background: #1f1f1f; padding: 8px 20px; border-radius: 30px; z-index: 200;
+            background: #1f1f1f; padding: 8px 20px; border-radius: 30px; z-index: 500;
             border: 2px solid #333;
         }
         .panel-btn { background: #333; color: #fff; border: none; padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 14px; }
@@ -56,16 +56,13 @@
         input:checked + .slider { background-color: #bfa15f; }
         input:checked + .slider:before { transform: translateX(20px); }
 
-        /* ==========================================
-            書本核心（直覺式 RWD 縮放，確保 iPad/iMac 都能顯現）
-           ========================================== */
+        /* 書本容器 */
         .book-container {
             display: none;
             width: var(--total-width);
             height: var(--total-height); 
             position: relative;
             transform-style: preserve-3d;
-            transition: transform 0.3s ease;
             z-index: 10;
         }
 
@@ -76,21 +73,19 @@
             top: 0;
             left: 0;
             transform-style: preserve-3d;
-            transition: transform 1.2s cubic-bezier(0.25, 1, 0.5, 1);
-            pointer-events: none;
+            transition: transform 1.0s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         .page-side {
             position: absolute;
-            width: 100%;
             height: 100%;
+            width: var(--page-width); /* 鎖定單頁寬度，防止字幕溢出 */
             top: 0;
-            left: 0;
             backface-visibility: hidden;
-            -webkit-backface-visibility: hidden; /* 修正 iPad Safari 閃爍 */
+            -webkit-backface-visibility: hidden;
             box-sizing: border-box;
             overflow: hidden;
-            box-shadow: 0 10px 35px rgba(0,0,0,0.6);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             background: #111;
         }
 
@@ -99,7 +94,6 @@
             height: var(--total-height);
             position: absolute;
             top: 0;
-            left: 0;
             pointer-events: none;
         }
 
@@ -107,27 +101,21 @@
             width: var(--page-width) !important; 
             height: 100% !important;
             object-fit: fill !important;
-        }
-
-        /* 左右跨頁定位與遮罩（改用極高相容性的 width/left 控制，取代 clip-path） */
-        .front {
-            z-index: 2;
-            left: var(--page-width);
-            width: var(--page-width);
-            transform-origin: left center;
-            border-radius: 0 8px 8px 0;
-        }
-        .front .full-spread-img {
-            left: calc(-1 * var(--page-width));
-        }
-        .front .single-mode {
             left: 0 !important;
         }
 
+        /* 嚴格限制左右半邊的圖文範圍 */
+        .front {
+            left: var(--page-width);
+            transform-origin: left center;
+            border-radius: 0 8px 8px 0;
+        }
+        .front .full-spread-img:not(.single-mode) {
+            left: calc(-1 * var(--page-width));
+        }
+
         .back {
-            z-index: 1;
             left: 0;
-            width: var(--page-width);
             transform: rotateY(180deg);
             transform-origin: right center;
             border-radius: 8px 0 0 8px;
@@ -135,18 +123,10 @@
         .back .full-spread-img {
             left: 0;
         }
-        .back .single-mode {
-            left: 0 !important;
-        }
 
-        /* 翻頁動態效果 */
-        .paper.flipped .front {
-            z-index: 1;
+        /* 翻頁動作：直接藉由類別控管前後層級，不靠 JS 延遲 */
+        .paper.flipped {
             transform: rotateY(-180deg);
-        }
-        .paper.flipped .back {
-            z-index: 2;
-            transform: rotateY(0deg);
         }
 
         /* 封面主標題文字框位置 */
@@ -155,26 +135,30 @@
             z-index: 30;               
             top: 45px;                 
             color: #bfa15f;            
-            font-size: 36px;
+            font-size: 34px;
             font-weight: bold;
             letter-spacing: 6px;
             text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.9); 
             width: 100%;
             text-align: center;
+            pointer-events: none;
         }
 
-        /* 底部懸浮文字遮罩 */
+        /* 底部懸浮文字遮罩（寬度自適應半頁，絕不與對面重疊） */
         .text-overlay {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 70%, rgba(0,0,0,0) 100%);
-            padding: 60px 30px 25px 30px;
+            width: 100%;
+            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 75%, rgba(0,0,0,0) 100%);
+            padding: 50px 25px 25px 25px;
             z-index: 25;
             color: #fff;
+            box-sizing: border-box;
+            pointer-events: none;
         }
-        .text-overlay p { font-size: 19px; line-height: 1.6; margin: 0; text-align: justify; opacity: 0.95; letter-spacing: 0.5px; }
+        .text-overlay p { font-size: 18px; line-height: 1.6; margin: 0; text-align: justify; opacity: 0.95; letter-spacing: 0.5px; }
 
         /* 頁碼 */
         .floating-num {
@@ -183,15 +167,16 @@
             background: rgba(0, 0, 0, 0.6);
             padding: 2px 8px;
             border-radius: 10px;
-            font-size: 12px;
+            font-size: 11px;
             color: #ccc;
             z-index: 26;
+            pointer-events: none;
         }
         .front .floating-num { right: 20px; }
         .back .floating-num { left: 20px; }
 
         /* 底部控制按鈕列 */
-        .page-controls { display: none; margin-top: 30px; gap: 50px; z-index: 100; }
+        .page-controls { display: none; margin-top: 30px; gap: 50px; z-index: 500; }
         .nav-btn {
             background-color: #1a1a1a; color: #bfa15f; border: 2px solid #bfa15f;
             padding: 10px 28px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer;
@@ -204,7 +189,7 @@
 
     <div id="entrance">
         <h1>《 歡迎光臨，馬路格鬥場 》</h1>
-        <p>點選你想觀觀看得角色，進入不同的視角故事：</p>
+        <p>點選你想觀看的角色，進入不同的視角故事：</p>
         <div class="btn-group">
             <button class="start-btn" onclick="startBook('pedestrian')">🚶 行人小芳 視角</button>
             <button class="start-btn" onclick="startBook('driver')">🚗 駕駛阿哲 視角</button>
@@ -299,7 +284,7 @@
         }
 
         // ==========================================
-        // 【RWD 自動縮放】直覺相容 iPad 與 iMac 螢幕大小
+        // 【RWD 自動縮放】完全相容 iPad 與 iMac 螢幕大小
         // ==========================================
         function resizeBook() {
             const book = document.getElementById('book');
@@ -315,6 +300,7 @@
             if (scale < 0.35) scale = 0.35;
 
             book.style.transform = `scale(${scale})`;
+            book.style.transformOrigin = 'center center';
         }
 
         window.addEventListener('resize', resizeBook);
@@ -336,7 +322,6 @@
                 const paper = document.createElement('div');
                 paper.className = 'paper';
                 paper.id = `paper-${i}`;
-                paper.style.zIndex = totalPapers - i; 
 
                 let frontClass = frontData.isSinglePage ? "full-spread-img single-mode" : "full-spread-img";
                 let backClass = backData.isSinglePage ? "full-spread-img single-mode" : "full-spread-img";
@@ -348,7 +333,7 @@
                 if (frontData.isSpecialEnding) {
                     frontTextHTML = `
                         <div class="text-overlay">
-                            <h3 style="color:#fff; margin:0 0 10px 0; font-size:22px;">${frontData.title}</h3>
+                            <h3 style="color:#fff; margin:0 0 10px 0; font-size:20px;">${frontData.title}</h3>
                             <p style="color:#bfa15f;">${frontData.desc}</p>
                         </div>`;
                 }
@@ -374,8 +359,27 @@
         }
 
         // ==========================================
-        // 翻頁控制邏輯
+        // 翻頁層級與控制管理（修復卡死問題）
         // ==========================================
+        function updateZIndices() {
+            for (let i = 0; i < totalPapers; i++) {
+                const paper = document.getElementById(`paper-${i}`);
+                if (currentMode === 'pedestrian') {
+                    if (i < currentPaperIndex) {
+                        paper.style.zIndex = i + 1;
+                    } else {
+                        paper.style.zIndex = totalPapers - i;
+                    }
+                } else {
+                    if (i >= currentPaperIndex) {
+                        paper.style.zIndex = totalPapers - i;
+                    } else {
+                        paper.style.zIndex = i + 1;
+                    }
+                }
+            }
+        }
+
         function startBook(mode) {
             currentMode = mode;
             document.getElementById('entrance').style.display = 'none';
@@ -394,6 +398,7 @@
                 currentPaperIndex = totalPapers;
                 resetAllPapers(true); 
             }
+            updateZIndices();
         }
 
         function resetAllPapers(isFlipped) {
@@ -401,29 +406,26 @@
                 const paper = document.getElementById(`paper-${i}`);
                 if (isFlipped) {
                     paper.classList.add('flipped');
-                    paper.style.zIndex = i + 1;
                 } else {
                     paper.classList.remove('flipped');
-                    paper.style.zIndex = totalPapers - i;
                 }
             }
         }
 
         function nextPage() {
             if (currentMode === 'pedestrian') {
-                if (currentPaperIndex === 8) { // 行人到跨頁結局結束
+                if (currentPaperIndex === 8) { 
                     triggerStoryEnd();
                     return;
                 }
                 if (currentPaperIndex < totalPapers) {
                     const paper = document.getElementById(`paper-${currentPaperIndex}`);
                     paper.classList.add('flipped');
-                    let idx = currentPaperIndex;
-                    setTimeout(() => { paper.style.zIndex = idx; }, 300);
                     currentPaperIndex++;
+                    updateZIndices();
                 }
             } else {
-                if (currentPaperIndex === 8) { // 駕駛倒翻到跨頁結局結束
+                if (currentPaperIndex === 8) { 
                     triggerStoryEnd();
                     return;
                 }
@@ -431,7 +433,7 @@
                     currentPaperIndex--;
                     const paper = document.getElementById(`paper-${currentPaperIndex}`);
                     paper.classList.remove('flipped');
-                    paper.style.zIndex = totalPapers - currentPaperIndex;
+                    updateZIndices();
                 }
             }
         }
@@ -442,15 +444,14 @@
                     currentPaperIndex--;
                     const paper = document.getElementById(`paper-${currentPaperIndex}`);
                     paper.classList.remove('flipped');
-                    paper.style.zIndex = totalPapers - currentPaperIndex;
+                    updateZIndices();
                 }
             } else {
                 if (currentPaperIndex < totalPapers) {
                     const paper = document.getElementById(`paper-${currentPaperIndex}`);
                     paper.classList.add('flipped');
-                    let idx = currentPaperIndex;
-                    setTimeout(() => { paper.style.zIndex = idx; }, 300);
                     currentPaperIndex++;
+                    updateZIndices();
                 }
             }
         }
