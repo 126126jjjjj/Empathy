@@ -78,7 +78,7 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        /* 內頁翻轉舞台 */
+        /* 內頁舞台 */
         .book-stage {
             width: 100%;
             height: 100%;
@@ -94,7 +94,6 @@
             height: 100%;
             top: 0;
             left: 0;
-            /* 縮短翻頁時間至 0.6s，配合平面翻轉，徹底消滅 iPad 的閃爍感 */
             transition: transform 0.6s ease-in-out;
             -webkit-transition: -webkit-transform 0.6s ease-in-out;
         }
@@ -104,12 +103,10 @@
             height: 100%;
             width: var(--page-width); 
             top: 0;
-            -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
             box-sizing: border-box;
             overflow: hidden;
-            /* 調淡的中間縫隙陰影 */
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); 
+            transition: opacity 0.3s ease-in-out; /* 讓透明度隱藏時平滑過渡 */
         }
 
         .full-spread-img {
@@ -127,12 +124,14 @@
             left: 0 !important;
         }
 
-        /* 左右頁精密裁切 */
+        /* 左右半頁精確剪裁定位 */
         .front {
             left: var(--page-width);
             transform-origin: left center;
             -webkit-transform-origin: left center;
             border-radius: 0 8px 8px 0;
+            opacity: 1;
+            z-index: 2;
         }
         .front .full-spread-img:not(.single-mode) {
             left: calc(-1 * var(--page-width));
@@ -145,15 +144,33 @@
             transform-origin: right center;
             -webkit-transform-origin: right center;
             border-radius: 8px 0 0 8px;
+            opacity: 0; /* 尚未翻過去前，背面完全隱藏，防止圖層打架 */
+            z-index: 1;
         }
         .back .full-spread-img {
             left: 0;
         }
 
-        /* 平面翻轉切換類別 */
+        /* ==========================================
+           【終極修正點】當頁面被翻過去時 (.flipped)
+           ========================================== */
         .paper.flipped {
             transform: rotateY(-180deg);
             -webkit-transform: rotateY(-180deg);
+        }
+
+        /* 翻過去後：正面(右頁)透明度歸零、徹底隱藏，杜絕背面鏡像穿透到下一頁的左邊 */
+        .paper.flipped .front {
+            opacity: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* 翻過去後：背面(左頁)透明度變回 1 完美顯現，且層級調高 */
+        .paper.flipped .back {
+            opacity: 1;
+            z-index: 2;
+            pointer-events: auto;
         }
 
         /* 封面主標題 */
@@ -171,7 +188,7 @@
             pointer-events: none;
         }
 
-        /* 【終極修正】安全全域字幕：位於書本下方，寬度 100%，絕不重複，絕不切斷 */
+        /* 全域固定字幕 */
         .global-text-overlay {
             position: absolute;
             bottom: 0;
@@ -188,7 +205,7 @@
         }
         .global-text-overlay p { font-size: 19px; line-height: 1.6; margin: 0; text-align: center; opacity: 0.95; letter-spacing: 1px; text-shadow: 1px 1px 4px rgba(0,0,0,0.8); }
 
-        /* 獨立全域左右頁碼 */
+        /* 獨立全域頁碼 */
         .global-floating-num {
             position: absolute;
             bottom: 15px;
@@ -329,7 +346,6 @@
             const baseWidth = 1130;
             const baseHeight = 600;
             
-            // 預留足夠寬度與高度給按鈕
             const windowWidth = window.innerWidth - 30;
             const windowHeight = window.innerHeight - 170; 
 
