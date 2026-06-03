@@ -71,12 +71,23 @@
             z-index: 10;
         }
 
+        /* 核心結構：書本容器現在包含內頁、以及永遠置頂的「獨立固定字幕與頁碼」 */
         .book-container {
             display: none;
             width: var(--total-width);
             height: var(--total-height); 
             position: relative;
+        }
+
+        /* 獨立出來的翻頁畫布舞台，與字幕剝離 */
+        .book-stage {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
             transform-style: preserve-3d;
+            z-index: 5;
         }
 
         .paper {
@@ -156,28 +167,25 @@
             pointer-events: none;
         }
 
-        /* 跨頁通欄字幕：精準置中，不重複 */
-        .text-overlay {
+        /* 【終極修正】獨立於翻頁層級之外的滿版通欄字幕：絕不切斷、不重複、置中對齊 */
+        .global-text-overlay {
             position: absolute;
             bottom: 0;
-            width: var(--total-width);         
-            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 75%, rgba(0,0,0,0) 100%);
+            left: 0;
+            width: 100%;         
+            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 75%, rgba(0,0,0,0) 100%);
             padding: 60px 40px 35px 40px;
-            z-index: 25;
+            z-index: 50; /* 壓在所有人最上層 */
             color: #fff;
             box-sizing: border-box;
             pointer-events: none;
             text-align: center;
+            border-radius: 0 0 8px 8px;
         }
-        .text-overlay p { font-size: 19px; line-height: 1.6; margin: 0; text-align: center; opacity: 0.95; letter-spacing: 1px; text-shadow: 1px 1px 4px rgba(0,0,0,0.8); }
+        .global-text-overlay p { font-size: 19px; line-height: 1.6; margin: 0; text-align: center; opacity: 0.95; letter-spacing: 1px; text-shadow: 1px 1px 4px rgba(0,0,0,0.8); }
 
-        /* 綁定在 front 內的跨頁通欄字幕定位 */
-        .front .text-overlay { left: calc(-1 * var(--page-width)); }
-        /* 綁定在 back 內的跨頁通欄字幕定位 */
-        .back .text-overlay { left: 0; }
-
-        /* 頁碼：永不干擾視覺 */
-        .floating-num {
+        /* 【終極修正】獨立於網頁最外層的左右頁碼：永遠不跟著翻轉顛倒 */
+        .global-floating-num {
             position: absolute;
             bottom: 15px;
             background: rgba(0, 0, 0, 0.6);
@@ -185,13 +193,13 @@
             border-radius: 10px;
             font-size: 11px;
             color: #ccc;
-            z-index: 35;
+            z-index: 55;
             pointer-events: none;
         }
-        .front .floating-num { right: 20px; }
-        .back .floating-num { left: 20px; }
+        .global-num-left { left: 20px; }
+        .global-num-right { right: 20px; }
 
-        /* 底部控制按鈕列：徹底跟畫布拉開距離 */
+        /* 底部控制按鈕列 */
         .page-controls { display: none; gap: 50px; z-index: 500; height: 40px; margin-bottom: 5px; }
         .nav-btn {
             background-color: #1a1a1a; color: #bfa15f; border: 2px solid #bfa15f;
@@ -222,7 +230,14 @@
                 <button class="start-btn" onclick="startBook('driver')">🚗 駕駛阿哲 視角</button>
             </div>
         </div>
-        <div class="book-container" id="book"></div>
+        
+        <div class="book-container" id="book">
+            <div class="book-stage" id="book-stage"></div>
+            
+            <div class="global-text-overlay" id="global-subtitle" style="display: none;"></div>
+            <div class="global-floating-num global-num-left" id="global-p-left" style="display: none;"></div>
+            <div class="global-floating-num global-num-right" id="global-p-right" style="display: none;"></div>
+        </div>
     </div>
 
     <div class="page-controls" id="controls-bar">
@@ -301,7 +316,7 @@
         }
 
         // ==========================================
-        // 【精確比例縮放】確保書籍與上下控制列絕對不撞車
+        // 【精確比例縮放】
         // ==========================================
         function resizeBook() {
             const book = document.getElementById('book');
@@ -309,9 +324,8 @@
 
             const baseWidth = 1130;
             const baseHeight = 600;
-            
             const windowWidth = window.innerWidth - 40;
-            const windowHeight = window.innerHeight - 150; // 加大安全間距
+            const windowHeight = window.innerHeight - 150; 
 
             let scale = Math.min(windowWidth / baseWidth, windowHeight / baseHeight);
             if (scale > 1.0) scale = 1.0; 
@@ -324,11 +338,11 @@
         window.addEventListener('resize', resizeBook);
 
         // ==========================================
-        // 動態生成書本結構（解決小芳/阿哲視角字幕相反與重複的終極核心）
+        // 渲染生成書本舞台
         // ==========================================
         function renderBook() {
-            const container = document.getElementById('book');
-            container.innerHTML = '';
+            const stage = document.getElementById('book-stage');
+            stage.innerHTML = '';
             
             for (let i = 0; i < totalPapers; i++) {
                 const frontNum = (i * 2) + 1;
@@ -347,45 +361,75 @@
                 let frontCustomTextHTML = frontData.customText ? `<div class="custom-text-box">${frontData.customText}</div>` : '';
                 let backCustomTextHTML = backData.customText ? `<div class="custom-text-box">${backData.customText}</div>` : '';
 
-                // 【核心修正點】動態依據視角渲染字幕：
-                // 如果是行人小芳（正著翻），字幕綁在右頁 (frontData)；如果是駕駛阿哲（倒著翻回來），字幕改綁在左頁 (backData)
-                let frontTextHTML = '';
-                let backTextHTML = '';
-
-                if (currentMode === 'pedestrian') {
-                    if (frontData.desc) {
-                        if (frontData.isSpecialEnding) {
-                            frontTextHTML = `
-                                <div class="text-overlay">
-                                    <h3 style="color:#fff; margin:0 0 10px 0; font-size:20px;">${frontData.title}</h3>
-                                    <p style="color:#bfa15f;">${frontData.desc}</p>
-                                </div>`;
-                        } else {
-                            frontTextHTML = `<div class="text-overlay"><p>${frontData.desc}</p></div>`;
-                        }
-                    }
-                } else {
-                    // 阿哲視角：將對應跨頁的字幕渲染到左頁(back)
-                    if (backData.desc) {
-                        backTextHTML = `<div class="text-overlay"><p>${backData.desc}</p></div>`;
-                    }
-                }
-
                 paper.innerHTML = `
                     <div class="page-side front">
                         <img src="${frontData.img || ''}" class="${frontClass}" alt="Spread">
                         ${frontCustomTextHTML}
-                        ${frontTextHTML}
-                        <div class="floating-num">P${frontNum}</div>
                     </div>
                     <div class="page-side back">
                         <img src="${backData.img || ''}" class="${backClass}" alt="Spread">
                         ${backCustomTextHTML}
-                        ${backTextHTML}
-                        <div class="floating-num">P${backNum}</div>
                     </div>
                 `;
-                container.appendChild(paper);
+                stage.appendChild(paper);
+            }
+        }
+
+        // ==========================================
+        // 【核心修正點】集中管理：根據當前頁數動態刷新「全域固定字幕與頁碼」
+        // ==========================================
+        function updateGlobalOverlays() {
+            let leftPageNum, rightPageNum;
+
+            if (currentMode === 'pedestrian') {
+                // 正翻：當前可見的左頁是 currentPaperIndex*2，右頁是 currentPaperIndex*2 + 1
+                // 剛開始時 index=0，可見 P1 (單頁封面在右側)
+                if (currentPaperIndex === 0) {
+                    leftPageNum = null;
+                    rightPageNum = 1;
+                } else {
+                    leftPageNum = currentPaperIndex * 2;
+                    rightPageNum = (currentPaperIndex * 2) + 1;
+                }
+            } else {
+                // 倒翻：阿哲視角
+                if (currentPaperIndex === totalPapers) {
+                    leftPageNum = 32; // 封底單頁在左側
+                    rightPageNum = null;
+                } else {
+                    leftPageNum = currentPaperIndex * 2;
+                    rightPageNum = (currentPaperIndex * 2) + 1;
+                }
+            }
+
+            // 更新頁碼標籤
+            const pLeft = document.getElementById('global-p-left');
+            const pRight = document.getElementById('global-p-right');
+            
+            if (leftPageNum) { pLeft.innerText = `P${leftPageNum}`; pLeft.style.display = 'block'; }
+            else { pLeft.style.display = 'none'; }
+
+            if (rightPageNum) { pRight.innerText = `P${rightPageNum}`; pRight.style.display = 'block'; }
+            else { pRight.style.display = 'none'; }
+
+            // 抓取合適的字幕內容 (優先抓取有故事敘述的那一頁)
+            let activeData = null;
+            if (rightPageNum) activeData = getPageData(rightPageNum);
+            if ((!activeData || !activeData.desc) && leftPageNum) activeData = getPageData(leftPageNum);
+
+            const subtitleBox = document.getElementById('global-subtitle');
+            if (activeData && activeData.desc) {
+                if (activeData.isSpecialEnding) {
+                    subtitleBox.innerHTML = `
+                        <h3 style="color:#fff; margin:0 0 8px 0; font-size:20px;">${activeData.title}</h3>
+                        <p style="color:#bfa15f;">${activeData.desc}</p>
+                    `;
+                } else {
+                    subtitleBox.innerHTML = `<p>${activeData.desc}</p>`;
+                }
+                subtitleBox.style.display = 'block';
+            } else {
+                subtitleBox.style.display = 'none';
             }
         }
 
@@ -409,6 +453,8 @@
                     }
                 }
             }
+            // 每次頁碼層級變更，全域字幕同步刷新
+            updateGlobalOverlays();
         }
 
         function startBook(mode) {
@@ -418,7 +464,6 @@
             document.getElementById('controls-bar').style.display = 'flex';
             document.getElementById('book').style.display = 'block';
             
-            // 根據不同視角先重新建構字幕方向，再做縮放調整
             renderBook();
             resizeBook();
 
