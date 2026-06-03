@@ -20,10 +20,10 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: space-between; /* 確保頂、中、底三色塊絕對分開 */
+            justify-content: space-between; 
             box-sizing: border-box;
-            padding-top: 20px;
-            padding-bottom: 20px;
+            padding-top: 15px;
+            padding-bottom: 15px;
             height: 100vh;
             overflow: hidden;
             perspective: 3000px;
@@ -42,16 +42,16 @@
         }
         .start-btn:hover { background: #bfa15f; color: #1a1a1a; box-shadow: 0 0 20px rgba(191, 161, 95, 0.4); }
 
-        /* 頂部控制面板：獨立固定，絕不壓低 */
+        /* 頂部控制面板 */
         .control-panel {
             display: none; align-items: center; gap: 20px;
-            background: #1f1f1f; padding: 8px 25px; border-radius: 30px; z-index: 500;
+            background: #1f1f1f; padding: 6px 25px; border-radius: 30px; z-index: 500;
             border: 2px solid #333;
-            height: 24px;
+            height: 28px;
         }
-        .panel-btn { background: #333; color: #fff; border: none; padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 14px; }
+        .panel-btn { background: #333; color: #fff; border: none; padding: 4px 12px; border-radius: 15px; cursor: pointer; font-size: 13px; }
         .panel-btn:hover { background: #444; }
-        .current-view-tag { font-size: 14px; color: #bfa15f; font-weight: bold; }
+        .current-view-tag { font-size: 13px; color: #bfa15f; font-weight: bold; }
 
         /* 自動播放開關 */
         .switch { position: relative; display: inline-block; width: 40px; height: 20px; margin-left: 5px; }
@@ -61,7 +61,7 @@
         input:checked + .slider { background-color: #bfa15f; }
         input:checked + .slider:before { transform: translateX(20px); }
 
-        /* 書本縮放核心外殼：確保維持黃金比例並垂直居中 */
+        /* 書本外殼與容器 */
         .book-wrapper {
             display: flex;
             align-items: center;
@@ -117,7 +117,7 @@
             left: 0 !important;
         }
 
-        /* 左右頁裁切精確定位 */
+        /* 左右頁精密裁切控制 */
         .front {
             left: var(--page-width);
             transform-origin: left center;
@@ -156,23 +156,27 @@
             pointer-events: none;
         }
 
-        /* 跨頁單一滿版字幕遮罩：寬度調整為全書寬，並透過 clip-path 只在右頁渲染完整一行，解決重疊與重複 */
+        /* 跨頁通欄字幕：精準置中，不重複 */
         .text-overlay {
             position: absolute;
             bottom: 0;
-            left: calc(-1 * var(--page-width)); /* 往左偏移，對齊整本書的左邊緣 */
-            width: var(--total-width);         /* 字幕寬度橫跨整本書 */
-            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 75%, rgba(0,0,0,0) 100%);
-            padding: 60px 40px 30px 40px;
+            width: var(--total-width);         
+            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 75%, rgba(0,0,0,0) 100%);
+            padding: 60px 40px 35px 40px;
             z-index: 25;
             color: #fff;
             box-sizing: border-box;
             pointer-events: none;
             text-align: center;
         }
-        .text-overlay p { font-size: 19px; line-height: 1.6; margin: 0; text-align: center; opacity: 0.95; letter-spacing: 1px; }
+        .text-overlay p { font-size: 19px; line-height: 1.6; margin: 0; text-align: center; opacity: 0.95; letter-spacing: 1px; text-shadow: 1px 1px 4px rgba(0,0,0,0.8); }
 
-        /* 頁碼：拉到最左右兩側邊緣，絕不干擾畫面 */
+        /* 綁定在 front 內的跨頁通欄字幕定位 */
+        .front .text-overlay { left: calc(-1 * var(--page-width)); }
+        /* 綁定在 back 內的跨頁通欄字幕定位 */
+        .back .text-overlay { left: 0; }
+
+        /* 頁碼：永不干擾視覺 */
         .floating-num {
             position: absolute;
             bottom: 15px;
@@ -187,11 +191,11 @@
         .front .floating-num { right: 20px; }
         .back .floating-num { left: 20px; }
 
-        /* 底部控制按鈕列：獨立固定在網頁最底部，杜絕遮擋 */
-        .page-controls { display: none; gap: 50px; z-index: 500; height: 45px; }
+        /* 底部控制按鈕列：徹底跟畫布拉開距離 */
+        .page-controls { display: none; gap: 50px; z-index: 500; height: 40px; margin-bottom: 5px; }
         .nav-btn {
             background-color: #1a1a1a; color: #bfa15f; border: 2px solid #bfa15f;
-            padding: 10px 32px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer;
+            padding: 8px 32px; font-size: 15px; font-weight: bold; border-radius: 25px; cursor: pointer;
             transition: all 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.4);
         }
         .nav-btn:hover { background-color: #bfa15f; color: #1a1a1a; box-shadow: 0 0 15px rgba(191, 161, 95, 0.5); }
@@ -202,7 +206,7 @@
     <div class="control-panel" id="panel">
         <button class="panel-btn" onclick="resetBook()">返回選單</button>
         <span class="current-view-tag" id="view-tag">目前視角：行人小芳</span>
-        <span style="font-size: 14px; margin-left: 15px; color: #aaa;" id="mode-text">自動翻頁</span>
+        <span style="font-size: 13px; margin-left: 15px; color: #aaa;" id="mode-text">自動翻頁</span>
         <label class="switch">
             <input type="checkbox" id="auto-toggle">
             <span class="slider"></span>
@@ -297,7 +301,7 @@
         }
 
         // ==========================================
-        // 【精確比例縮放】確保書籍與上下控制列永不撞車
+        // 【精確比例縮放】確保書籍與上下控制列絕對不撞車
         // ==========================================
         function resizeBook() {
             const book = document.getElementById('book');
@@ -306,9 +310,8 @@
             const baseWidth = 1130;
             const baseHeight = 600;
             
-            // 預留頂部和底部的實體工具列寬度空間（160px）
             const windowWidth = window.innerWidth - 40;
-            const windowHeight = window.innerHeight - 160;
+            const windowHeight = window.innerHeight - 150; // 加大安全間距
 
             let scale = Math.min(windowWidth / baseWidth, windowHeight / baseHeight);
             if (scale > 1.0) scale = 1.0; 
@@ -321,7 +324,7 @@
         window.addEventListener('resize', resizeBook);
 
         // ==========================================
-        // 渲染生成
+        // 動態生成書本結構（解決小芳/阿哲視角字幕相反與重複的終極核心）
         // ==========================================
         function renderBook() {
             const container = document.getElementById('book');
@@ -344,18 +347,29 @@
                 let frontCustomTextHTML = frontData.customText ? `<div class="custom-text-box">${frontData.customText}</div>` : '';
                 let backCustomTextHTML = backData.customText ? `<div class="custom-text-box">${backData.customText}</div>` : '';
 
-                // 核心關鍵：只將字幕渲染在右頁（front），左頁（back）留空，大功告成解決重複問題
-                let frontTextHTML = frontData.desc ? `<div class="text-overlay"><p>${frontData.desc}</p></div>` : '';
-                if (frontData.isSpecialEnding) {
-                    frontTextHTML = `
-                        <div class="text-overlay">
-                            <h3 style="color:#fff; margin:0 0 10px 0; font-size:20px;">${frontData.title}</h3>
-                            <p style="color:#bfa15f;">${frontData.desc}</p>
-                        </div>`;
-                }
+                // 【核心修正點】動態依據視角渲染字幕：
+                // 如果是行人小芳（正著翻），字幕綁在右頁 (frontData)；如果是駕駛阿哲（倒著翻回來），字幕改綁在左頁 (backData)
+                let frontTextHTML = '';
+                let backTextHTML = '';
 
-                // 左頁絕對不放字幕
-                let backTextHTML = ''; 
+                if (currentMode === 'pedestrian') {
+                    if (frontData.desc) {
+                        if (frontData.isSpecialEnding) {
+                            frontTextHTML = `
+                                <div class="text-overlay">
+                                    <h3 style="color:#fff; margin:0 0 10px 0; font-size:20px;">${frontData.title}</h3>
+                                    <p style="color:#bfa15f;">${frontData.desc}</p>
+                                </div>`;
+                        } else {
+                            frontTextHTML = `<div class="text-overlay"><p>${frontData.desc}</p></div>`;
+                        }
+                    }
+                } else {
+                    // 阿哲視角：將對應跨頁的字幕渲染到左頁(back)
+                    if (backData.desc) {
+                        backTextHTML = `<div class="text-overlay"><p>${backData.desc}</p></div>`;
+                    }
+                }
 
                 paper.innerHTML = `
                     <div class="page-side front">
@@ -376,7 +390,7 @@
         }
 
         // ==========================================
-        // 翻頁層級與管理（修復卡死問題）
+        // 翻頁層級管理
         // ==========================================
         function updateZIndices() {
             for (let i = 0; i < totalPapers; i++) {
@@ -404,6 +418,8 @@
             document.getElementById('controls-bar').style.display = 'flex';
             document.getElementById('book').style.display = 'block';
             
+            // 根據不同視角先重新建構字幕方向，再做縮放調整
+            renderBook();
             resizeBook();
 
             if (mode === 'pedestrian') {
@@ -511,7 +527,7 @@
         }
 
         // ==========================================
-        // 鍵盤與觸控滑動事件
+        // 鍵盤與觸控事件
         // ==========================================
         document.addEventListener('keydown', (e) => {
             if (document.getElementById('book').style.display === 'block') {
