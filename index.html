@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>歡迎光臨，馬路格鬥場繪本</title>
     <style>
         :root {
@@ -16,33 +16,19 @@
             color: #fff;
             font-family: 'Noto Serif TC', 'Microsoft JhengHei', serif;
             margin: 0;
-            padding: 0;
+            padding: 20px 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: space-between; 
+            justify-content: center;
+            min-height: 100vh;
             box-sizing: border-box;
-            padding-top: 15px;
-            padding-bottom: 15px;
-            
-            /* 【iPad 導覽列不見修正】利用固定定位鎖死視窗高度，防止 Safari 滾動隱藏頂部面板 */
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            height: 100vh;
-            width: 100vw;
-            
-            overflow: hidden;
-            -webkit-perspective: 2000px;
-            perspective: 2000px;
             -webkit-user-select: none;
             user-select: none;
         }
 
         /* 入口選單 */
-        #entrance { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 600; width: 90%; }
+        #entrance { text-align: center; z-index: 600; max-width: 90%; margin: auto; }
         #entrance h1 { font-size: 50px; margin-bottom: 40px; letter-spacing: 2px; color: #bfa15f; }
         #entrance p { color: #aaa; margin-bottom: 35px; font-size: 24px; }
         .btn-group { display: flex; gap: 50px; justify-content: center; }
@@ -52,14 +38,14 @@
         }
         .start-btn:hover { background: #bfa15f; color: #1a1a1a; box-shadow: 0 0 20px rgba(191, 161, 95, 0.4); }
 
-        /* 頂部控制面板：強化 z-index 與固定層級 */
+        /* 頂部控制面板 */
         .control-panel {
             display: none; align-items: center; gap: 20px;
-            background: #1f1f1f; padding: 6px 25px; border-radius: 30px; z-index: 9999;
+            background: #1f1f1f; padding: 10px 25px; border-radius: 30px; z-index: 500;
             border: 2px solid #333;
-            height: 28px;
+            margin-bottom: 20px;
         }
-        .panel-btn { background: #333; color: #fff; border: none; padding: 4px 12px; border-radius: 15px; cursor: pointer; font-size: 13px; }
+        .panel-btn { background: #333; color: #fff; border: none; padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 13px; }
         .panel-btn:hover { background: #444; }
         .current-view-tag { font-size: 13px; color: #bfa15f; font-weight: bold; }
 
@@ -71,24 +57,25 @@
         input:checked + .slider { background-color: #bfa15f; }
         input:checked + .slider:before { transform: translateX(20px); }
 
-        /* 書本置中縮放外殼 */
+        /* 書本縮放主框架 */
         .book-wrapper {
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            flex-grow: 1;
-            width: 100%;
             z-index: 10;
+            margin-bottom: 25px;
         }
 
-        /* 書本主容器 */
+        /* 書本容器 */
         .book-container {
             display: none;
             width: var(--total-width);
             height: var(--total-height); 
             position: relative;
-            -webkit-transform-style: preserve-3d;
-            transform-style: preserve-3d;
+            background: #111;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
         /* 內頁翻轉舞台 */
@@ -98,8 +85,6 @@
             position: absolute;
             top: 0;
             left: 0;
-            -webkit-transform-style: preserve-3d;
-            transform-style: preserve-3d;
             z-index: 5;
         }
 
@@ -109,10 +94,9 @@
             height: 100%;
             top: 0;
             left: 0;
-            -webkit-transform-style: preserve-3d;
-            transform-style: preserve-3d;
-            transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
-            -webkit-transition: -webkit-transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+            /* 縮短翻頁時間至 0.6s，配合平面翻轉，徹底消滅 iPad 的閃爍感 */
+            transition: transform 0.6s ease-in-out;
+            -webkit-transition: -webkit-transform 0.6s ease-in-out;
         }
 
         .page-side {
@@ -120,17 +104,12 @@
             height: 100%;
             width: var(--page-width); 
             top: 0;
-            /* 【iPad 閃爍修正】將 3D 渲染降級為貼合平面渲染，杜絕圖層重新排序時的突發黑白閃爍 */
             -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
             box-sizing: border-box;
             overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25); 
-            background: #0c0c0c; /* 這裡改成與主背景同色，黑閃時視覺上就看不出來 */
-            
-            /* 強制硬體加速，但保持平整 */
-            -webkit-transform: translate3d(0,0,0);
-            transform: translate3d(0,0,0);
+            /* 調淡的中間縫隙陰影 */
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); 
         }
 
         .full-spread-img {
@@ -139,9 +118,6 @@
             position: absolute;
             top: 0;
             pointer-events: none;
-            /* 修正圖片縮放鋸齒與邊緣殘影 */
-            -webkit-transform: translateZ(0);
-            transform: translateZ(0);
         }
 
         .single-mode {
@@ -151,7 +127,7 @@
             left: 0 !important;
         }
 
-        /* 左右頁精密裁切控制 */
+        /* 左右頁精密裁切 */
         .front {
             left: var(--page-width);
             transform-origin: left center;
@@ -174,6 +150,7 @@
             left: 0;
         }
 
+        /* 平面翻轉切換類別 */
         .paper.flipped {
             transform: rotateY(-180deg);
             -webkit-transform: rotateY(-180deg);
@@ -194,15 +171,15 @@
             pointer-events: none;
         }
 
-        /* 獨立滿版通欄字幕：移除易引發 iPad Pro 圖層打架的 translateZ 深度，直接用 z-index 控制 */
+        /* 【終極修正】安全全域字幕：位於書本下方，寬度 100%，絕不重複，絕不切斷 */
         .global-text-overlay {
             position: absolute;
             bottom: 0;
             left: 0;
             width: 100%;         
-            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 75%, rgba(0,0,0,0) 100%);
-            padding: 60px 40px 35px 40px;
-            z-index: 2000; /* 超高層級，覆蓋 3D 空間 */
+            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 75%, rgba(0,0,0,0) 100%);
+            padding: 50px 40px 30px 40px;
+            z-index: 500; 
             color: #fff;
             box-sizing: border-box;
             pointer-events: none;
@@ -220,17 +197,17 @@
             border-radius: 10px;
             font-size: 11px;
             color: #ccc;
-            z-index: 2100;
+            z-index: 510;
             pointer-events: none;
         }
         .global-num-left { left: 20px; }
         .global-num-right { right: 20px; }
 
-        /* 底部控制按鈕列：確保在最前層 */
-        .page-controls { display: none; gap: 50px; z-index: 5000; height: 40px; margin-bottom: 5px; }
+        /* 底部控制按鈕列 */
+        .page-controls { display: none; gap: 50px; z-index: 1000; margin-top: 10px; }
         .nav-btn {
             background-color: #1a1a1a; color: #bfa15f; border: 2px solid #bfa15f;
-            padding: 8px 32px; font-size: 15px; font-weight: bold; border-radius: 25px; cursor: pointer;
+            padding: 10px 35px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer;
             transition: all 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.4);
         }
         .nav-btn:hover { background-color: #bfa15f; color: #1a1a1a; box-shadow: 0 0 15px rgba(191, 161, 95, 0.5); }
@@ -248,16 +225,16 @@
         </label>
     </div>
 
-    <div class="book-wrapper">
-        <div id="entrance">
-            <h1>《 歡迎光臨，馬路格鬥場 》</h1>
-            <p>點選你想觀看的角色，進入不同的視角故事：</p>
-            <div class="btn-group">
-                <button class="start-btn" onclick="startBook('pedestrian')">🚶 行人小芳 視角</button>
-                <button class="start-btn" onclick="startBook('driver')">🚗 駕駛阿哲 視角</button>
-            </div>
+    <div id="entrance">
+        <h1>《 歡迎光臨，馬路格鬥場 》</h1>
+        <p>點選你想觀看的角色，進入不同的視角故事：</p>
+        <div class="btn-group">
+            <button class="start-btn" onclick="startBook('pedestrian')">🚶 行人小芳 視角</button>
+            <button class="start-btn" onclick="startBook('driver')">🚗 駕駛阿哲 視角</button>
         </div>
-        
+    </div>
+
+    <div class="book-wrapper">
         <div class="book-container" id="book">
             <div class="book-stage" id="book-stage"></div>
             
@@ -343,7 +320,7 @@
         }
 
         // ==========================================
-        // 【精確比例縮放】
+        // 【彈性 RWD 縮放】
         // ==========================================
         function resizeBook() {
             const book = document.getElementById('book');
@@ -351,14 +328,16 @@
 
             const baseWidth = 1130;
             const baseHeight = 600;
-            const windowWidth = window.innerWidth - 40;
-            const windowHeight = window.innerHeight - 150; 
+            
+            // 預留足夠寬度與高度給按鈕
+            const windowWidth = window.innerWidth - 30;
+            const windowHeight = window.innerHeight - 170; 
 
             let scale = Math.min(windowWidth / baseWidth, windowHeight / baseHeight);
             if (scale > 1.0) scale = 1.0; 
             if (scale < 0.35) scale = 0.35;
 
-            book.style.transform = `scale(${scale})`;
+            book.style.transform = 'scale(' + scale + ')';
             book.style.transformOrigin = 'center center';
         }
 
@@ -380,7 +359,7 @@
 
                 const paper = document.createElement('div');
                 paper.className = 'paper';
-                paper.id = `paper-${i}`;
+                paper.id = 'paper-' + i;
 
                 let frontClass = frontData.isSinglePage ? "full-spread-img single-mode" : "full-spread-img";
                 let backClass = backData.isSinglePage ? "full-spread-img single-mode" : "full-spread-img";
@@ -429,10 +408,10 @@
             const pLeft = document.getElementById('global-p-left');
             const pRight = document.getElementById('global-p-right');
             
-            if (leftPageNum) { pLeft.innerText = `P${leftPageNum}`; pLeft.style.display = 'block'; }
+            if (leftPageNum) { pLeft.innerText = 'P' + leftPageNum; pLeft.style.display = 'block'; }
             else { pLeft.style.display = 'none'; }
 
-            if (rightPageNum) { pRight.innerText = `P${rightPageNum}`; pRight.style.display = 'block'; }
+            if (rightPageNum) { pRight.innerText = 'P' + rightPageNum; pRight.style.display = 'block'; }
             else { pRight.style.display = 'none'; }
 
             let activeData = null;
@@ -447,7 +426,7 @@
                         <p style="color:#bfa15f;">${activeData.desc}</p>
                     `;
                 } else {
-                    subtitleBox.innerHTML = `<p>${activeData.desc}</p>`;
+                    subtitleBox.innerHTML = '<p>' + activeData.desc + '</p>';
                 }
                 subtitleBox.style.display = 'block';
             } else {
@@ -530,7 +509,7 @@
                 }
                 if (currentPaperIndex > 0) {
                     currentPaperIndex--;
-                    const paper = document.getElementById('paper-' + (currentPaperIndex));
+                    const paper = document.getElementById('paper-' + currentPaperIndex);
                     paper.classList.remove('flipped');
                     updateZIndices();
                 }
