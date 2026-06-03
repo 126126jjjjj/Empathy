@@ -24,12 +24,19 @@
             box-sizing: border-box;
             padding-top: 15px;
             padding-bottom: 15px;
-            height: 100vh;
-            overflow: hidden;
             
-            /* iPad Safari 3D 視角終極強化 */
-            -webkit-perspective: 3000px;
-            perspective: 3000px;
+            /* 【iPad 導覽列不見修正】利用固定定位鎖死視窗高度，防止 Safari 滾動隱藏頂部面板 */
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 100vh;
+            width: 100vw;
+            
+            overflow: hidden;
+            -webkit-perspective: 2000px;
+            perspective: 2000px;
             -webkit-user-select: none;
             user-select: none;
         }
@@ -45,10 +52,10 @@
         }
         .start-btn:hover { background: #bfa15f; color: #1a1a1a; box-shadow: 0 0 20px rgba(191, 161, 95, 0.4); }
 
-        /* 頂部控制面板 */
+        /* 頂部控制面板：強化 z-index 與固定層級 */
         .control-panel {
             display: none; align-items: center; gap: 20px;
-            background: #1f1f1f; padding: 6px 25px; border-radius: 30px; z-index: 500;
+            background: #1f1f1f; padding: 6px 25px; border-radius: 30px; z-index: 9999;
             border: 2px solid #333;
             height: 28px;
         }
@@ -80,7 +87,6 @@
             width: var(--total-width);
             height: var(--total-height); 
             position: relative;
-            /* 修正 iPad Pro 圖層穿透與打架：強制開啟外層的 3D 平面 */
             -webkit-transform-style: preserve-3d;
             transform-style: preserve-3d;
         }
@@ -105,8 +111,8 @@
             left: 0;
             -webkit-transform-style: preserve-3d;
             transform-style: preserve-3d;
-            transition: transform 1.0s cubic-bezier(0.25, 1, 0.5, 1);
-            -webkit-transition: -webkit-transform 1.0s cubic-bezier(0.25, 1, 0.5, 1);
+            transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+            -webkit-transition: -webkit-transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         .page-side {
@@ -114,17 +120,17 @@
             height: 100%;
             width: var(--page-width); 
             top: 0;
-            /* 解決 iPad 翻頁時背面殘影與白閃 */
+            /* 【iPad 閃爍修正】將 3D 渲染降級為貼合平面渲染，杜絕圖層重新排序時的突發黑白閃爍 */
             -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
             box-sizing: border-box;
             overflow: hidden;
-            /* 依要求調淡、變柔和的中間陰影 */
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25); 
-            background: #111;
-            /* 強制 iPad 啟用硬體加速渲染 */
-            -webkit-transform: translateZ(0);
-            transform: translateZ(0);
+            background: #0c0c0c; /* 這裡改成與主背景同色，黑閃時視覺上就看不出來 */
+            
+            /* 強制硬體加速，但保持平整 */
+            -webkit-transform: translate3d(0,0,0);
+            transform: translate3d(0,0,0);
         }
 
         .full-spread-img {
@@ -133,6 +139,9 @@
             position: absolute;
             top: 0;
             pointer-events: none;
+            /* 修正圖片縮放鋸齒與邊緣殘影 */
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
         }
 
         .single-mode {
@@ -185,7 +194,7 @@
             pointer-events: none;
         }
 
-        /* 獨立滿版通欄字幕：強制移出 3D 舞台空間，放在 2D 最頂層，避免 iPad Pro 切割異常 */
+        /* 獨立滿版通欄字幕：移除易引發 iPad Pro 圖層打架的 translateZ 深度，直接用 z-index 控制 */
         .global-text-overlay {
             position: absolute;
             bottom: 0;
@@ -193,15 +202,12 @@
             width: 100%;         
             background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 75%, rgba(0,0,0,0) 100%);
             padding: 60px 40px 35px 40px;
-            z-index: 999; /* 絕對最上層 */
+            z-index: 2000; /* 超高層級，覆蓋 3D 空間 */
             color: #fff;
             box-sizing: border-box;
             pointer-events: none;
             text-align: center;
             border-radius: 0 0 8px 8px;
-            /* 抽離 3D 渲染，確保 iPad 平面貼合 */
-            -webkit-transform: translateZ(500px);
-            transform: translateZ(500px);
         }
         .global-text-overlay p { font-size: 19px; line-height: 1.6; margin: 0; text-align: center; opacity: 0.95; letter-spacing: 1px; text-shadow: 1px 1px 4px rgba(0,0,0,0.8); }
 
@@ -214,16 +220,14 @@
             border-radius: 10px;
             font-size: 11px;
             color: #ccc;
-            z-index: 1000;
+            z-index: 2100;
             pointer-events: none;
-            -webkit-transform: translateZ(501px);
-            transform: translateZ(501px);
         }
         .global-num-left { left: 20px; }
         .global-num-right { right: 20px; }
 
-        /* 底部控制按鈕列 */
-        .page-controls { display: none; gap: 50px; z-index: 500; height: 40px; margin-bottom: 5px; }
+        /* 底部控制按鈕列：確保在最前層 */
+        .page-controls { display: none; gap: 50px; z-index: 5000; height: 40px; margin-bottom: 5px; }
         .nav-btn {
             background-color: #1a1a1a; color: #bfa15f; border: 2px solid #bfa15f;
             padding: 8px 32px; font-size: 15px; font-weight: bold; border-radius: 25px; cursor: pointer;
@@ -456,7 +460,7 @@
         // ==========================================
         function updateZIndices() {
             for (let i = 0; i < totalPapers; i++) {
-                const paper = document.getElementById(`paper-${i}`);
+                const paper = document.getElementById('paper-' + i);
                 if (currentMode === 'pedestrian') {
                     if (i < currentPaperIndex) {
                         paper.style.zIndex = i + 1;
@@ -498,7 +502,7 @@
 
         function resetAllPapers(isFlipped) {
             for (let i = 0; i < totalPapers; i++) {
-                const paper = document.getElementById(`paper-${i}`);
+                const paper = document.getElementById('paper-' + i);
                 if (isFlipped) {
                     paper.classList.add('flipped');
                 } else {
@@ -514,7 +518,7 @@
                     return;
                 }
                 if (currentPaperIndex < totalPapers) {
-                    const paper = document.getElementById(`paper-${currentPaperIndex}`);
+                    const paper = document.getElementById('paper-' + currentPaperIndex);
                     paper.classList.add('flipped');
                     currentPaperIndex++;
                     updateZIndices();
@@ -526,7 +530,7 @@
                 }
                 if (currentPaperIndex > 0) {
                     currentPaperIndex--;
-                    const paper = document.getElementById(`paper-${currentPaperIndex}`);
+                    const paper = document.getElementById('paper-' + (currentPaperIndex));
                     paper.classList.remove('flipped');
                     updateZIndices();
                 }
@@ -537,13 +541,13 @@
             if (currentMode === 'pedestrian') {
                 if (currentPaperIndex > 0) {
                     currentPaperIndex--;
-                    const paper = document.getElementById(`paper-${currentPaperIndex}`);
+                    const paper = document.getElementById('paper-' + currentPaperIndex);
                     paper.classList.remove('flipped');
                     updateZIndices();
                 }
             } else {
                 if (currentPaperIndex < totalPapers) {
-                    const paper = document.getElementById(`paper-${currentPaperIndex}`);
+                    const paper = document.getElementById('paper-' + currentPaperIndex);
                     paper.classList.add('flipped');
                     currentPaperIndex++;
                     updateZIndices();
