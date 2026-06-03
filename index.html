@@ -105,7 +105,7 @@
             top: 0;
             box-sizing: border-box;
             overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); 
+            box-shadow: 0 2px 0px rgba(0, 0, 0, 0); 
             transition: opacity 0.3s ease-in-out; /* 讓透明度隱藏時平滑過渡 */
         }
 
@@ -177,7 +177,7 @@
         .custom-text-box {
             position: absolute;
             z-index: 30;               
-            top: 45px;                 
+            top: 40px;                 
             color: #bfa15f;            
             font-size: 34px;
             font-weight: bold;
@@ -203,7 +203,7 @@
             text-align: center;
             border-radius: 0 0 8px 8px;
         }
-        .global-text-overlay p { font-size: 19px; line-height: 1.6; margin: 0; text-align: center; opacity: 0.95; letter-spacing: 1px; text-shadow: 1px 1px 4px rgba(0,0,0,0.8); }
+        .global-text-overlay p { font-size: 25px; line-height: 1.6; margin: 0; text-align: center; opacity: 0.95; letter-spacing: 1px; text-shadow: 1px 1px 4px rgba(0,0,0,0.8); }
 
         /* 獨立全域頁碼 */
         .global-floating-num {
@@ -438,7 +438,7 @@
             if (activeData && activeData.desc) {
                 if (activeData.isSpecialEnding) {
                     subtitleBox.innerHTML = `
-                        <h3 style="color:#fff; margin:0 0 8px 0; font-size:20px;">${activeData.title}</h3>
+                        <h3 style="color:#fff; margin:0 0 8px 0; font-size:30px;">${activeData.title}</h3>
                         <p style="color:#bfa15f;">${activeData.desc}</p>
                     `;
                 } else {
