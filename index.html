@@ -6,7 +6,6 @@
     <title>歡迎光臨，馬路格鬥場繪本</title>
     <style>
         :root {
-            /* 基礎設計維度，後續會透過 JS 搭配 scale 進行響應式縮放 */
             --total-width: 1130px; 
             --total-height: 600px;
             --page-width: 565px;   
@@ -23,32 +22,29 @@
             justify-content: center;
             min-height: 100vh;
             overflow: hidden;
-            /* 避免 iPad 上滑動時產生頁面彈跳與誤觸選取 */
-            position: relative;
-            touch-action: none;
+            perspective: 3000px; /* 提升 3D 視角相容性 */
             -webkit-user-select: none;
             user-select: none;
         }
 
         /* 入口選單 */
-        #entrance { text-align: center; z-index: 100; max-width: 90%; }
-        #entrance h1 { font-size: 4.5vw; max-size: 70px; margin-bottom: 30px; letter-spacing: 2px; color: #bfa15f; }
-        #entrance p { color: #aaa; margin-bottom: 35px; font-size: 1.8vw; max-size: 30px; }
-        .btn-group { display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; }
+        #entrance { text-align: center; z-index: 100; }
+        #entrance h1 { font-size: 50px; margin-bottom: 40px; letter-spacing: 2px; color: #bfa15f; }
+        #entrance p { color: #aaa; margin-bottom: 35px; font-size: 24px; }
+        .btn-group { display: flex; gap: 50px; justify-content: center; }
         .start-btn {
-            padding: 15px 35px; font-size: 18px; cursor: pointer; border: 2px solid #bfa15f;
+            padding: 15px 35px; font-size: 20px; cursor: pointer; border: 2px solid #bfa15f;
             background: transparent; color: #bfa15f; border-radius: 8px; transition: all 0.3s; font-weight: bold;
-            min-width: 200px;
         }
         .start-btn:hover { background: #bfa15f; color: #1a1a1a; box-shadow: 0 0 20px rgba(191, 161, 95, 0.4); }
 
         /* 頂部控制面板 */
         .control-panel {
-            display: none; align-items: center; gap: 15px; margin-bottom: 20px;
-            background: #1f1f1f; padding: 8px 20px; border-radius: 30px; z-index: 70;
-            border: 2px solid #333; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            display: none; align-items: center; gap: 20px; margin-bottom: 20px;
+            background: #1f1f1f; padding: 8px 20px; border-radius: 30px; z-index: 200;
+            border: 2px solid #333;
         }
-        .panel-btn { background: #333; color: #fff; border: none; padding: 6px 15px; border-radius: 15px; cursor: pointer; font-size: 14px; }
+        .panel-btn { background: #333; color: #fff; border: none; padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 14px; }
         .panel-btn:hover { background: #444; }
         .current-view-tag { font-size: 14px; color: #bfa15f; font-weight: bold; }
 
@@ -61,22 +57,16 @@
         input:checked + .slider:before { transform: translateX(20px); }
 
         /* ==========================================
-            書本核心與縮放架構 (RWD Container)
+            書本核心（直覺式 RWD 縮放，確保 iPad/iMac 都能顯現）
            ========================================== */
-        .book-viewport {
+        .book-container {
             display: none;
             width: var(--total-width);
-            height: var(--total-height);
+            height: var(--total-height); 
             position: relative;
-            transform-origin: center center;
-            transition: transform 0.1s ease-out;
-        }
-
-        .book-container {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            perspective: 2500px; 
+            transform-style: preserve-3d;
+            transition: transform 0.3s ease;
+            z-index: 10;
         }
 
         .paper {
@@ -87,7 +77,6 @@
             left: 0;
             transform-style: preserve-3d;
             transition: transform 1.2s cubic-bezier(0.25, 1, 0.5, 1);
-            z-index: 1;
             pointer-events: none;
         }
 
@@ -98,68 +87,79 @@
             top: 0;
             left: 0;
             backface-visibility: hidden;
+            -webkit-backface-visibility: hidden; /* 修正 iPad Safari 閃爍 */
             box-sizing: border-box;
             overflow: hidden;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.6);
-            background-color: #111; /* 避免圖片載入前的白閃 */
+            box-shadow: 0 10px 35px rgba(0,0,0,0.6);
+            background: #111;
         }
 
         .full-spread-img {
-            width: 100%;
-            height: 100%;
+            width: var(--total-width);
+            height: var(--total-height);
             position: absolute;
             top: 0;
             left: 0;
             pointer-events: none;
-            object-fit: cover;
         }
 
         .single-mode {
             width: var(--page-width) !important; 
             height: 100% !important;
-            top: 0 !important; 
             object-fit: fill !important;
         }
 
-        /* 左右跨頁裁切與遮罩邏輯 */
+        /* 左右跨頁定位與遮罩（改用極高相容性的 width/left 控制，取代 clip-path） */
         .front {
             z-index: 2;
-            transform: rotateY(0deg);
-            transform-origin: var(--page-width) center;
-            clip-path: inset(0 0 0 var(--page-width)); 
+            left: var(--page-width);
+            width: var(--page-width);
+            transform-origin: left center;
             border-radius: 0 8px 8px 0;
         }
+        .front .full-spread-img {
+            left: calc(-1 * var(--page-width));
+        }
         .front .single-mode {
-            left: var(--page-width) !important;
+            left: 0 !important;
         }
 
         .back {
             z-index: 1;
+            left: 0;
+            width: var(--page-width);
             transform: rotateY(180deg);
-            transform-origin: var(--page-width) center;
-            clip-path: inset(0 var(--page-width) 0 0); 
+            transform-origin: right center;
             border-radius: 8px 0 0 8px;
+        }
+        .back .full-spread-img {
+            left: 0;
         }
         .back .single-mode {
             left: 0 !important;
         }
 
-        .paper.flipped {
+        /* 翻頁動態效果 */
+        .paper.flipped .front {
+            z-index: 1;
             transform: rotateY(-180deg);
+        }
+        .paper.flipped .back {
+            z-index: 2;
+            transform: rotateY(0deg);
         }
 
         /* 封面主標題文字框位置 */
         .custom-text-box {
             position: absolute;
-            z-index: 20;               
-            pointer-events: auto;      
+            z-index: 30;               
             top: 45px;                 
             color: #bfa15f;            
-            font-size: 38px;
+            font-size: 36px;
             font-weight: bold;
             letter-spacing: 6px;
             text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.9); 
-            width: var(--page-width);
+            width: 100%;
             text-align: center;
         }
 
@@ -169,33 +169,32 @@
             bottom: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 70%, rgba(0,0,0,0) 100%);
-            padding: 50px 40px 30px 40px;
-            z-index: 10;
+            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 70%, rgba(0,0,0,0) 100%);
+            padding: 60px 30px 25px 30px;
+            z-index: 25;
             color: #fff;
-            pointer-events: none;
         }
-        .text-overlay p { font-size: 20px; line-height: 1.6; margin: 0; text-align: justify; opacity: 0.95; letter-spacing: 1px; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
+        .text-overlay p { font-size: 19px; line-height: 1.6; margin: 0; text-align: justify; opacity: 0.95; letter-spacing: 0.5px; }
 
         /* 頁碼 */
         .floating-num {
             position: absolute;
-            bottom: 15px;
+            bottom: 12px;
             background: rgba(0, 0, 0, 0.6);
             padding: 2px 8px;
             border-radius: 10px;
             font-size: 12px;
             color: #ccc;
-            z-index: 12;
+            z-index: 26;
         }
-        .front .floating-num { right: var(--page-width); transform: translateX(calc(var(--page-width) - 40px)); }
+        .front .floating-num { right: 20px; }
         .back .floating-num { left: 20px; }
 
-        /* 底部按鈕控制列 */
-        .page-controls { display: none; margin-top: 25px; gap: 40px; z-index: 100; }
+        /* 底部控制按鈕列 */
+        .page-controls { display: none; margin-top: 30px; gap: 50px; z-index: 100; }
         .nav-btn {
             background-color: #1a1a1a; color: #bfa15f; border: 2px solid #bfa15f;
-            padding: 10px 30px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer;
+            padding: 10px 28px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer;
             transition: all 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.4);
         }
         .nav-btn:hover { background-color: #bfa15f; color: #1a1a1a; box-shadow: 0 0 15px rgba(191, 161, 95, 0.5); }
@@ -203,17 +202,15 @@
 </head>
 <body>
 
-    <!-- 入口選單 -->
     <div id="entrance">
         <h1>《 歡迎光臨，馬路格鬥場 》</h1>
-        <p>點選你想觀看的角色，進入不同的視角故事：</p>
+        <p>點選你想觀觀看得角色，進入不同的視角故事：</p>
         <div class="btn-group">
             <button class="start-btn" onclick="startBook('pedestrian')">🚶 行人小芳 視角</button>
             <button class="start-btn" onclick="startBook('driver')">🚗 駕駛阿哲 視角</button>
         </div>
     </div>
 
-    <!-- 頂部控制面板 -->
     <div class="control-panel" id="panel">
         <button class="panel-btn" onclick="resetBook()">返回選單</button>
         <span class="current-view-tag" id="view-tag">目前視角：行人小芳</span>
@@ -224,12 +221,8 @@
         </label>
     </div>
 
-    <!-- 書本視窗 Container (加入動態 RWD 縮放外殼) -->
-    <div class="book-viewport" id="book-viewport">
-        <div class="book-container" id="book"></div>
-    </div>
+    <div class="book-container" id="book"></div>
 
-    <!-- 底部控制按鈕 -->
     <div class="page-controls" id="controls-bar">
         <button class="nav-btn" onclick="prevPage()">◀ 上一頁</button>
         <button class="nav-btn" onclick="nextPage()">下一頁 ▶</button>
@@ -243,14 +236,12 @@
         let autoInterval = null; 
 
         // ==========================================
-        // 【資料庫邏輯重構修正】 完美保留原始圖片名稱與大小寫
+        // 【資料庫邏輯】 完美保留你原始的所有圖片檔名與大小寫
         // ==========================================
         function getPageData(num) {
-            // P1 封面 (小芳)
             if (num === 1) {
                 return { img: 'book0-1.PNG', isSinglePage: true, customText: '行人小芳' };
             }
-            // P2 - P13 小芳的故事線
             if (num === 2 || num === 3) {
                 return { img: 'book2-1.PNG', isSinglePage: false, desc: '小芳今天心情很好，音樂裡的節奏讓步履變得很輕快。耳機裡的旋律蓋過了城市的喧囂。' };
             }
@@ -270,7 +261,7 @@
                 return { img: 'book7-1.PNG', isSinglePage: false, desc: '她覺得委屈極了，剛剛就差那麼一點點…… ' };
             }
 
-            // P14 - P19 中間命運交織與共同結尾
+            // 中間命運交織與共同結尾
             if (num === 14 || num === 15) {
                 return { img: '02.png', isSinglePage: false, desc: '小芳：原來靠邊走不代表絕對安全，耳機讓我失去了對危險的警覺。<br><br>阿哲：原來趕時間會把自己和別人都推向危險，我應該再慢一點。' };
             }
@@ -282,7 +273,7 @@
                 return { img: '02.png', isSinglePage: false, title: `共同結尾 (跨頁 ${pairId})`, desc: '小芳：原來靠邊走不代表絕對安全，耳機讓我失去了對危險的警覺。<br><br>阿哲：原來趕時間會把自己和別人都推向危險，我應該再慢一點。' };
             }
             
-            // P20 - P31 阿哲的故事線
+            // 阿哲的故事線
             if (num === 20 || num === 21) {
                 return { img: 'book7-2.PNG', isSinglePage: false, desc: '為了趕這幾分鐘，差點賠上了一輩子……' };
             }
@@ -301,8 +292,6 @@
             if (num === 30 || num === 31) {
                 return { img: 'book2-2.PNG', isSinglePage: false, desc: '阿哲正在趕時間，手機上的送餐數字不斷跳動。' };
             }
-            
-            // P32 封底面 (阿哲)
             if (num === 32) {
                 return { img: 'book0-2.PNG', isSinglePage: true, customText: '駕駛阿哲' };
             }
@@ -310,42 +299,32 @@
         }
 
         // ==========================================
-        // 【RWD 自動縮放響應式邏輯】相容 iPad 與 iMac
+        // 【RWD 自動縮放】直覺相容 iPad 與 iMac 螢幕大小
         // ==========================================
         function resizeBook() {
-            const viewport = document.getElementById('book-viewport');
-            if (viewport.style.display === 'none' || viewport.style.display === '') return;
+            const book = document.getElementById('book');
+            if (book.style.display === 'none' || book.style.display === '') return;
 
             const baseWidth = 1130;
             const baseHeight = 600;
-            
-            const paddingX = 40;
-            const paddingY = 160; 
-            const windowWidth = window.innerWidth - paddingX;
-            const windowHeight = window.innerHeight - paddingY;
+            const windowWidth = window.innerWidth - 40;
+            const windowHeight = window.innerHeight - 160;
 
             let scale = Math.min(windowWidth / baseWidth, windowHeight / baseHeight);
+            if (scale > 1.1) scale = 1.1; 
+            if (scale < 0.35) scale = 0.35;
 
-            if (scale > 1.2) scale = 1.2; 
-            if (scale < 0.4) scale = 0.4;
-
-            viewport.style.transform = `scale(${scale})`;
+            book.style.transform = `scale(${scale})`;
         }
 
         window.addEventListener('resize', resizeBook);
 
         // ==========================================
-        // 繪本生成核心
+        // 渲染生成
         // ==========================================
         function renderBook() {
             const container = document.getElementById('book');
             container.innerHTML = '';
-            
-            const box = document.createElement('div');
-            box.id = 'papers-box';
-            box.style.height = "100%";
-            box.style.width = "100%";
-            container.appendChild(box);
             
             for (let i = 0; i < totalPapers; i++) {
                 const frontNum = (i * 2) + 1;
@@ -359,66 +338,50 @@
                 paper.id = `paper-${i}`;
                 paper.style.zIndex = totalPapers - i; 
 
-                let frontClip = (frontNum === 1) ? 'clip-path: inset(0 0 0 var(--page-width)); border-radius: 0 8px 8px 0;' : '';
-                let backClip = (backNum === 32) ? 'clip-path: inset(0 var(--page-width) 0 0); border-radius: 8px 0 0 8px;' : '';
-
                 let frontClass = frontData.isSinglePage ? "full-spread-img single-mode" : "full-spread-img";
                 let backClass = backData.isSinglePage ? "full-spread-img single-mode" : "full-spread-img";
 
-                let frontCustomTextHTML = frontData.customText ? `<div class="custom-text-box" style="left: var(--page-width);">${frontData.customText}</div>` : '';
-                let backCustomTextHTML = backData.customText ? `<div class="custom-text-box" style="left: 0;">${backData.customText}</div>` : '';
+                let frontCustomTextHTML = frontData.customText ? `<div class="custom-text-box">${frontData.customText}</div>` : '';
+                let backCustomTextHTML = backData.customText ? `<div class="custom-text-box">${backData.customText}</div>` : '';
 
-                let frontTextHTML = '';
-                if (frontNum === 1 && frontData.title) {
-                    frontTextHTML = `<div style="position:absolute; bottom:30px; left:620px; z-index:10; pointer-events:none;"><h2>${frontData.title}</h2></div>`;
-                } else if (frontData.isSpecialEnding) {
+                let frontTextHTML = frontData.desc ? `<div class="text-overlay"><p>${frontData.desc}</p></div>` : '';
+                if (frontData.isSpecialEnding) {
                     frontTextHTML = `
-                        <div style="position:absolute; top:40px; left:600px; right:40px; z-index:10; color:#fff; font-size:24px; letter-spacing:1px; font-weight:bold; text-shadow:1px 1px 4px rgba(0,0,0,0.8); pointer-events:none;">${frontData.title}</div>
-                        <div style="position:absolute; bottom:50px; left:600px; right:40px; z-index:10; color:#bfa15f; font-size:22px; letter-spacing:2px; font-weight:bold; text-shadow:1px 1px 4px rgba(0,0,0,0.8); pointer-events:none;">${frontData.desc}</div>
-                    `;
-                } else if (frontData.desc) {
-                    frontTextHTML = `<div class="text-overlay" style="clip-path: inset(0 0 0 var(--page-width)); padding-left: calc(var(--page-width) + 40px);"><p>${frontData.desc}</p></div>`;
+                        <div class="text-overlay">
+                            <h3 style="color:#fff; margin:0 0 10px 0; font-size:22px;">${frontData.title}</h3>
+                            <p style="color:#bfa15f;">${frontData.desc}</p>
+                        </div>`;
                 }
 
-                let backTextHTML = '';
-                if (backNum === 32 && backData.title) {
-                    backTextHTML = `<div style="position:absolute; bottom:30px; left:50px; z-index:10; pointer-events:none;"><h2>${backData.title}</h2></div>`;
-                } else if (backData.isSpecialEnding) {
-                    backTextHTML = `
-                        <div style="position:absolute; top:40px; left:50px; right:600px; z-index:10; color:#fff; font-size:24px; letter-spacing:1px; font-weight:bold; text-shadow:1px 1px 4px rgba(0,0,0,0.8); pointer-events:none;">${frontData.title}</div>
-                        <div style="position:absolute; bottom:50px; left:50px; right:600px; z-index:10; color:#bfa15f; font-size:22px; letter-spacing:2px; font-weight:bold; text-shadow:1px 1px 4px rgba(0,0,0,0.8); pointer-events:none;">${frontData.desc}</div>
-                    `;
-                } else if (backData.desc) {
-                    backTextHTML = `<div class="text-overlay" style="clip-path: inset(0 var(--page-width) 0 0); padding-right: calc(var(--page-width) + 40px);"><p>${backData.desc}</p></div>`;
-                }
+                let backTextHTML = backData.desc ? `<div class="text-overlay"><p>${backData.desc}</p></div>` : '';
 
                 paper.innerHTML = `
-                    <div class="page-side front" style="${frontClip}">
+                    <div class="page-side front">
                         <img src="${frontData.img || ''}" class="${frontClass}" alt="Spread">
                         ${frontCustomTextHTML}
                         ${frontTextHTML}
                         <div class="floating-num">P${frontNum}</div>
                     </div>
-                    <div class="page-side back" style="${backClip}">
+                    <div class="page-side back">
                         <img src="${backData.img || ''}" class="${backClass}" alt="Spread">
                         ${backCustomTextHTML}
                         ${backTextHTML}
                         <div class="floating-num">P${backNum}</div>
                     </div>
                 `;
-                box.appendChild(paper);
+                container.appendChild(paper);
             }
         }
 
         // ==========================================
-        // 故事導航控制
+        // 翻頁控制邏輯
         // ==========================================
         function startBook(mode) {
             currentMode = mode;
             document.getElementById('entrance').style.display = 'none';
             document.getElementById('panel').style.display = 'flex';
             document.getElementById('controls-bar').style.display = 'flex';
-            document.getElementById('book-viewport').style.display = 'block';
+            document.getElementById('book').style.display = 'block';
             
             resizeBook();
 
@@ -448,19 +411,19 @@
 
         function nextPage() {
             if (currentMode === 'pedestrian') {
-                if (currentPaperIndex === 8) {
+                if (currentPaperIndex === 8) { // 行人到跨頁結局結束
                     triggerStoryEnd();
                     return;
                 }
                 if (currentPaperIndex < totalPapers) {
                     const paper = document.getElementById(`paper-${currentPaperIndex}`);
                     paper.classList.add('flipped');
-                    let targetIndex = currentPaperIndex;
-                    setTimeout(() => { paper.style.zIndex = targetIndex; }, 300);
+                    let idx = currentPaperIndex;
+                    setTimeout(() => { paper.style.zIndex = idx; }, 300);
                     currentPaperIndex++;
                 }
             } else {
-                if (currentPaperIndex === 8) {
+                if (currentPaperIndex === 8) { // 駕駛倒翻到跨頁結局結束
                     triggerStoryEnd();
                     return;
                 }
@@ -485,8 +448,8 @@
                 if (currentPaperIndex < totalPapers) {
                     const paper = document.getElementById(`paper-${currentPaperIndex}`);
                     paper.classList.add('flipped');
-                    let targetIndex = currentPaperIndex;
-                    setTimeout(() => { paper.style.zIndex = targetIndex; }, 300);
+                    let idx = currentPaperIndex;
+                    setTimeout(() => { paper.style.zIndex = idx; }, 300);
                     currentPaperIndex++;
                 }
             }
@@ -494,13 +457,13 @@
 
         function triggerStoryEnd() {
             stopAutoplay(); 
-            const viewport = document.getElementById('book-viewport');
-            viewport.style.opacity = 0; 
-            viewport.style.transition = 'opacity 0.6s';
+            const book = document.getElementById('book');
+            book.style.opacity = 0; 
+            book.style.transition = 'opacity 0.4s';
             setTimeout(() => { 
                 resetBook(); 
-                viewport.style.opacity = 1;
-            }, 600); 
+                book.style.opacity = 1;
+            }, 400); 
         }
 
         function resetBook() {
@@ -509,11 +472,10 @@
             document.getElementById('entrance').style.display = 'block';
             document.getElementById('panel').style.display = 'none';
             document.getElementById('controls-bar').style.display = 'none'; 
-            document.getElementById('book-viewport').style.display = 'none';
+            document.getElementById('book').style.display = 'none';
             renderBook(); 
         }
 
-        // 自動播放開關
         document.getElementById('auto-toggle').addEventListener('change', function() {
             if (this.checked) {
                 document.getElementById('mode-text').innerText = "自動翻頁中";
@@ -531,42 +493,29 @@
         }
 
         // ==========================================
-        // 【多裝置操作支援】iMac鍵盤 + iPad觸控
+        // 硬體支援：iMac鍵盤 + iPad觸控
         // ==========================================
-        
-        // iMac / MacBook 實體鍵盤左右鍵
         document.addEventListener('keydown', (e) => {
-            if (document.getElementById('book-viewport').style.display === 'block') {
+            if (document.getElementById('book').style.display === 'block') {
                 if (e.key === 'ArrowRight') nextPage();
                 if (e.key === 'ArrowLeft') prevPage();
             }
         });
 
-        // iPad 手指滑動 (Swipe) 監聽
         let touchStartX = 0;
         let touchEndX = 0;
-
         document.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
         }, { passive: true });
 
         document.addEventListener('touchend', (e) => {
             touchEndX = e.changedTouches[0].screenX;
-            handleSwipe();
+            if (document.getElementById('book').style.display !== 'block') return;
+            if (touchStartX - touchEndX > 60) nextPage();
+            else if (touchEndX - touchStartX > 60) prevPage();
         }, { passive: true });
 
-        function handleSwipe() {
-            if (document.getElementById('book-viewport').style.display !== 'block') return;
-            
-            const swipeThreshold = 50; 
-            if (touchStartX - touchEndX > swipeThreshold) {
-                nextPage(); // 向左滑 -> 下一頁
-            } else if (touchEndX - touchStartX > swipeThreshold) {
-                prevPage(); // 向右滑 -> 上一頁
-            }
-        }
-
-        // 初始建構
+        // 初始載入
         renderBook();
     </script>
 </body>
