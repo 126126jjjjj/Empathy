@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <title>歡迎光臨，馬路格鬥場繪本 - iPad Pro 觸控修復版</title>
+    <style>
+        :root {
+            /* 鎖定 iPad Pro 橫向最舒適、絕對不溢出的安全物理尺寸 */
+            --total-width: 960px; 
+            --total-height: 500px;
+            --page-width: 480px;   
+        }
+
+        body {
+            background-color: #0c0c0c; 
+            color: #fff;
+            font-family: 'Noto Serif TC', 'Microsoft JhengHei', serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            /* 阻止 iPad 網頁出現上下橡皮筋回彈下拉的干擾現象 */
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            -webkit-user-select: none; /* 防止在 iPad 上長按圖片會跳出選單 */
+            user-select: none;
+        }
+
+        /* 入口選單 */
+        #entrance { text-align: center; z-index: 500; }
+        #entrance h1 { font-size: 50px; margin-bottom: 30px; letter-spacing: 2px; }
+        #entrance p { color: #aaa; margin-bottom: 30px; font-size: 22px; }
+        .btn-group { display: flex; gap: 45px; justify-content: center; }
+        .start-btn {
+            padding: 15px 35px; font-size: 20px; cursor: pointer; border: 2px solid #bfa15f;
+            background: transparent; color: #bfa15f; border-radius: 8px; transition: all 0.3s; font-weight: bold;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .start-btn:hover { background: #bfa15f; color: #1a1a1a; }
+
+        /* 頂部控制面板 */
+        .control-panel {
+            display: none; align-items: center; gap: 20px; margin-bottom: 30px;
+            background: #1f1f1f; padding: 8px 20px; border-radius: 30px; z-index: 80;
+            border: 4px solid #333;
+        }
+        .panel-btn { background: #333; color: #fff; border: none; padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 15px; -webkit-tap-highlight-color: transparent; }
+        .current-view-tag { font-size: 15px; color: #bfa15f; font-weight: bold; }
+
+        /* 自動播放 */
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; margin-left: 5px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #bfa15f; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* ==========================================
+            📖 書本核心容器 (iPad 物理鎖定版，絕不跑位)
+           ========================================== */
+        .book-container {
+            display: none;
+            width: var(--total-width);
+            height: var(--total-height); 
+            position: relative;
+            /* 調整透視感，讓 iPad 渲染 3D 翻頁時更加平滑穩健 */
+            perspective: 3000px; 
+            -webkit-perspective: 3000px; 
+            z-index: 10;
+        }
+
+        .paper {
+            position: absolute;
+            width: var(--total-width);
+            height: 100%;
+            top: 0;
+            left: 0;
+            transform-style: preserve-3d;
+            -webkit-transform-style: preserve-3d;
+            transition: transform 1.2s cubic-bezier(0.25, 1, 0.5, 1);
+            z-index: 1;
+            pointer-events: none; /* 穿透空白區，防止攔截觸控 */
+        }
+
+        .page-side {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            box-sizing: border-box;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            border-radius: 8px;
+        }
+
+        .full-spread-img {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .single-mode {
+            width: var(--page-width) !important; 
+            height: 100% !important;
+            top: 0 !important; 
+            object-fit: fill !important;
+        }
+
+        /* 遮罩 */
+        .front {
+            z-index: 2;
+            transform: rotateY(0deg);
+            transform-origin: var(--page-width) center;
+            -webkit-transform-origin: var(--page-width) center;
+            clip-path: inset(0 0 0 var(--page-width)); 
+            -webkit-clip-path: inset(0 0 0 var(--page-width)); 
+        }
+        .front .single-mode {
+            left: var(--page-width) !important;
+        }
+
+        .back {
+            z-index: 1;
+            transform: rotateY(180deg);
+            transform-origin: var(--page-width) center;
+            -webkit-transform-origin: var(--page-width) center;
+            clip-path: inset(0 var(--page-width) 0 0); 
+            -webkit-clip-path: inset(0 var(--page-width) 0 0); 
+        }
+        .back .single-mode {
+            left: 0 !important;
+        }
+
+        .paper.flipped {
+            transform: rotateY(-180deg);
+        }
+
+        /* 封面文字框位置 */
+        .custom-text-box {
+            position: absolute;
+            z-index: 20;               
+            pointer-events: auto;      
+            top: 35px;                 
+            color: #bfa15f;            
+            font-size: 40px;
+            font-weight: bold;
+            letter-spacing: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); 
+        }
+
+        /* 底部懸浮文字遮罩 */
+        .text-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 80%, rgba(0,0,0,0) 100%);
+            padding: 40px 25px 25px 65px;
+            z-index: 10;
+            color: #fff;
+            pointer-events: none;
+        }
+        .text-overlay p { font-size: 20px; line-height: 1.5; margin: 0; text-align: justify; opacity: 0.95; letter-spacing: 0.5px; }
+
+        /* 頁碼 */
+        .floating-num {
+            position: absolute;
+            bottom: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #ccc;
+            z-index: 12;
+        }
+        .front .floating-num { right: 20px; }
+        .back .floating-num { left: 20px; }
+
+        /* ==========================================================
+            🟢 【終極觸控修正】：按鈕強行上提，防攔截、防切邊、防穿透
+           ========================================================== */
+        .page-controls { 
+            display: none; 
+            gap: 150px; 
+            position: relative;
+            margin-top: 35px;  /* 與繪本拉開舒服的兼具，提高垂直高度 */
+            justify-content: center;
+            /* 👇 關鍵核心：將 z-index 頂天，並強制開啟點擊事件，不允許任何 3D 圖層蓋過它 */
+            z-index: 9999 !important; 
+            pointer-events: auto !important; 
+        }
+        .nav-btn {
+            background-color: #1a1a1a; 
+            color: #bfa15f; 
+            border: 2px solid #bfa15f;
+            padding: 14px 45px; /* 擴大 iPad 實體大拇指點選的安全觸控面積 */
+            font-size: 18px; 
+            font-weight: bold; 
+            border-radius: 30px; 
+            cursor: pointer;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.5);
+            /* 👇 移除 iOS 獨有的點擊藍色醜遮罩，強迫 iPad 系統立刻反應 touchstart 訊號 */
+            -webkit-tap-highlight-color: transparent !important; 
+            pointer-events: auto !important;
+        }
+        .nav-btn:active {
+            background-color: #bfa15f;
+            color: #1a1a1a;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="entrance">
+        <h1>《 歡迎光臨，馬路格鬥場 》</h1>
+        <p>點選你想觀看的角色，進入不同的視角故事：</p>
+        <div class="btn-group">
+            <button class="start-btn" onclick="startBook('pedestrian')">🚶 行人小芳 視角<br></button>
+            <button class="start-btn" onclick="startBook('driver')">🚗 駕駛阿哲 視角<br></button>
+        </div>
+    </div>
+
+    <div class="control-panel" id="panel">
+        <button class="panel-btn" onclick="resetBook()">返回選單</button>
+        <span class="current-view-tag" id="view-tag">目前視角：行人小芳</span>
+        <span style="font-size: 15px; margin-left: 20px; color: #aaa;" id="mode-text">自動翻頁</span>
+        <label class="switch">
+            <input type="checkbox" id="auto-toggle">
+            <span class="slider"></span>
+        </label>
+    </div>
+
+    <div class="book-container" id="book"></div>
+
+    <div class="page-controls" id="controls-bar">
+        <button class="nav-btn" onclick="prevPage()">◀ 上一頁</button>
+        <button class="nav-btn" onclick="nextPage()">下一頁 ▶</button>
+    </div>
+
+    <script>
+        const totalPages = 32;
+        const totalPapers = totalPages / 2; 
+        let currentMode = 'pedestrian'; 
+        let currentPaperIndex = 0;      
+        let autoInterval = null; 
+
+        // ==========================================
+        // 【資料庫】
+        // ==========================================
+        function getPageData(num) {
+            if (num === 1) {
+                return { 
+                    img: 'book0-1.png', 
+                    isSinglePage: true, 
+                    customText: '行人小芳' 
+                };
+            }
+            
+            if (num === 2 || num === 3) {
+                return { 
+                    img: 'book2-1.png', 
+                    isSinglePage: false,  
+                    desc: '小芳今天心情很好，音樂裡的節奏讓步履變得很輕快。耳機裡的旋律蓋過了城市的喧囂。' 
+                };
+            }
+            if (num === 4 || num === 5) {
+                return { 
+                    img: 'book3-1.png', 
+                    isSinglePage: false, 
+                    desc: '她覺得自己走得很邊邊了，躲在建築物的陰影下，這裡應該很安全。' 
+                };
+            }
+            if (num === 6 || num === 7) {
+                return { 
+                    img: 'book4-1.png', 
+                    isSinglePage: false, 
+                    desc: '這個路口沒有號誌。小芳沒有停下，她正忙著回覆訊息。' 
+                };
+            }
+            if (num === 8 || num === 9) {
+                return { 
+                    img: 'book5-1.png', 
+                    isSinglePage: false, 
+                    desc: '下一秒，機車突然出現！小芳受到極大的驚嚇。' 
+                };
+            }
+            if (num === 10 || num === 11) {
+                return { 
+                    img: 'book6-1.png', 
+                    isSinglePage: false, 
+                    desc: '小芳說：「轉彎都不會看嗎？這是路口耶！」' 
+                };
+            }
+            if (num === 12 || num === 13) {
+                return { 
+                    img: 'book7-1.png', 
+                    isSinglePage: false, 
+                    desc: '她覺得委屈極極了，剛剛就差那麼一點點…… ' 
+                };
+            }
+
+            if (num >= 14 && num <= 19) {
+                let pairId = num % 2 === 0 ? `${num}-${num+1}` : `${num-1}-${num}`;
+                let endingContext = "";
+                
+                if (num === 14 || num === 15) {
+                    let pairId = num % 2 === 0 ? `${num}-${num+1}` : `${num-1}-${num}`;
+                    return { 
+                        img: `https://picsum.photos/id/26/1130/400?sig=${pairId}`, 
+                        isSinglePage: false, 
+                        desc: '小芳：原來靠邊走不代表絕對安全，耳機讓我失去了對危險的警覺。<br><br>阿哲：原來趕時間會把自己和別人都推向危險，我應該再慢一點。' 
+                    };
+                }
+                if (num === 16 || num === 17) {
+                    let pairId = num % 2 === 0 ? `${num}-${num+1}` : `${num-1}-${num}`;
+                    return { 
+                        img: `https://picsum.photos/id/26/1130/400?sig=${pairId}`, 
+                        isSinglePage: false, 
+                        title: '如果我們願意換個角度想，馬路就會更安全。', 
+                        desc: '「安全意識與同理心，從換位開始。」',
+                        isSpecialEnding: true
+                    };
+                }
+                if(num === 18 || num === 19) endingContext = "小芳：原來靠邊走不代表絕對安全，耳機讓我失去了對危險的警覺。<br><br>阿哲：原來趕時間會把自己和別人都推向危險，我應該再慢一點。";
+                return { img: `https://picsum.photos/id/26/1130/400?sig=${pairId}`, isSinglePage: false, title: `共同結尾 (跨頁 ${pairId})`, desc: endingContext };
+            }
+            
+            if (num === 20 || num === 21) {
+                return { 
+                    img: 'book7-2.png', 
+                    isSinglePage: false, 
+                    desc: '為了趕這幾分鐘，差點賠上了一輩子……' 
+                };
+            }
+            if (num === 22 || num === 23) {
+                return { 
+                    img: 'book6-2.png', 
+                    isSinglePage: false, 
+                    desc: '他看著發抖的手，但腦袋裡全是剛才那個人影。' 
+                };
+            }
+            if (num === 24 || num === 25) {
+                return { 
+                    img: 'book5-2.png', 
+                    isSinglePage: false, 
+                    desc: '阿哲說：「走路為什麼不看路啊！害我差點摔車！」' 
+                };
+            }
+            if (num === 26 || num === 27) {
+                return { 
+                    img: 'book4-2.png', 
+                    isSinglePage: false, 
+                    desc: '突然，有人衝了房間！阿哲全身冷汗，死命抓緊煞車。' 
+                };
+            }
+            if (num === 28 || num === 29) {
+                return { 
+                    img: 'book3-2.png', 
+                    isSinglePage: false, 
+                    desc: '這個轉角是個視線死角，完全看不到另一邊的情況。他想著「這條路平時沒什麼人，應該沒關係吧？ 」' 
+                };
+            }
+            if (num === 30 || num === 31) {
+                return { 
+                    img: 'book2-2.png', 
+                    isSinglePage: false, 
+                    desc: '阿哲正在趕時間，手機上的送餐數字不斷跳動。' 
+                };
+            }
+            
+            if (num === 32) {
+                return { 
+                    img: 'book0-2.png', 
+                    isSinglePage: true, 
+                    customText: '駕駛阿哲' 
+                };
+            }
+        }
+
+        // ==========================================
+        // 核心
+        // ==========================================
+        function renderBook() {
+            const container = document.getElementById('book');
+            container.innerHTML = '';
+            
+            const box = document.createElement('div');
+            box.id = 'papers-box';
+            box.style.height = "100%";
+            box.style.width = "100%";
+            container.appendChild(box);
+            
+            for (let i = 0; i < totalPapers; i++) {
+                const frontNum = (i * 2) + 1;
+                const backNum = (i * 2) + 2;
+                
+                const frontData = getPageData(frontNum) || {};
+                const backData = getPageData(backNum) || {};
+
+                const paper = document.createElement('div');
+                paper.className = 'paper';
+                paper.id = `paper-${i}`;
+                paper.style.dynZIndex = totalPapers - i; 
+                paper.style.zIndex = totalPapers - i; 
+
+                // 補上 -webkit- 屬性相容性
+                let frontClip = (frontNum === 1) ? 'clip-path: inset(0 0 0 var(--page-width)); -webkit-clip-path: inset(0 0 0 var(--page-width)); border-radius: 0 8px 8px 0;' : '';
+                let backClip = (backNum === 32) ? 'clip-path: inset(0 var(--page-width) 0 0); -webkit-clip-path: inset(0 var(--page-width) 0 0); border-radius: 8px 0 0 8px;' : '';
+
+                let frontClass = frontData.isSinglePage ? "full-spread-img single-mode" : "full-spread-img";
+                let backClass = backData.isSinglePage ? "full-spread-img single-mode" : "full-spread-img";
+
+                let frontCustomTextHTML = frontData.customText ? `<div class="custom-text-box" style="left: 530px;">${frontData.customText}</div>` : '';
+                let backCustomTextHTML = backData.customText ? `<div class="custom-text-box" style="left: 40px;">${backData.customText}</div>` : '';
+
+                let frontTextHTML = '';
+                if (frontNum === 1 && frontData.title) {
+                    frontTextHTML = `<div style="position:absolute; bottom:30px; left:530px; z-index:10; pointer-events:none;"><h2>${frontData.title}</h2></div>`;
+                } else if (frontData.isSpecialEnding) {
+                    frontTextHTML = `
+                        <div style="position:absolute; top:40px; left:30px; z-index:10; color:#fff; font-size:24px; letter-spacing:1px; font-weight:bold; text-shadow:1px 1px 4px rgba(0,0,0,0.8); pointer-events:none;">${frontData.title}</div>
+                        <div style="position:absolute; bottom:50px; left:30px; z-index:10; color:#bfa15f; font-size:24px; letter-spacing:2px; font-weight:bold; text-shadow:1px 1px 4px rgba(0,0,0,0.8); pointer-events:none;">${frontData.desc}</div>
+                    `;
+                } else if (frontData.desc) {
+                    frontTextHTML = `<div class="text-overlay"><div class="floating-num" style="bottom: 12px; right: 20px;">P${frontNum}</div><p>${frontData.desc}</p></div>`;
+                }
+
+                let backTextHTML = '';
+                if (backNum === 32 && backData.title) {
+                    backTextHTML = `<div style="position:absolute; bottom:30px; left:40px; z-index:10; pointer-events:none;"><h2>${backData.title}</h2></div>`;
+                } else if (backData.isSpecialEnding) {
+                    backTextHTML = `
+                        <div style="position:absolute; top:40px; left:50px; z-index:10; color:#fff; font-size:24px; letter-spacing:1px; font-weight:bold; text-shadow:1px 1px 4px rgba(0,0,0,0.8); pointer-events:none;">${backData.title}</div>
+                        <div style="position:absolute; bottom:50px; left:50px; z-index:10; color:#bfa15f; font-size:24px; letter-spacing:2px; font-weight:bold; text-shadow:1px 1px 4px rgba(0,0,0,0.8); pointer-events:none;">${backData.desc}</div>
+                    `;
+                } else if (backData.desc) {
+                    backTextHTML = `<div class="text-overlay"><div class="floating-num" style="bottom: 12px; left: 20px;">P${backNum}</div><p>${backData.desc}</p></div>`;
+                }
+
+                paper.innerHTML = `
+                    <div class="page-side front" style="${frontClip}">
+                        <img src="${frontData.img || ''}" class="${frontClass}" alt="Spread">
+                        ${frontCustomTextHTML}
+                        ${frontTextHTML}
+                    </div>
+                    <div class="page-side back" style="${backClip}">
+                        <img src="${backData.img || ''}" class="${backClass}" alt="Spread">
+                        ${backCustomTextHTML}
+                        ${backTextHTML}
+                    </div>
+                `;
+                box.appendChild(paper);
+            }
+        }
+
+        function startBook(mode) {
+            currentMode = mode;
+            document.getElementById('entrance').style.display = 'none';
+            document.getElementById('panel').style.display = 'flex';
+            document.getElementById('controls-bar').style.display = 'flex';
+            document.getElementById('book').style.display = 'block';
+            
+            if (mode === 'pedestrian') {
+                document.getElementById('view-tag').innerText = "目前視角：🚶 行人小芳";
+                currentPaperIndex = 0;
+                resetAllPapers(false); 
+            } else {
+                document.getElementById('view-tag').innerText = "目前視角：🚗 駕駛阿哲";
+                currentPaperIndex = totalPapers;
+                resetAllPapers(true); 
+            }
+        }
+
+        function resetAllPapers(isFlipped) {
+            for (let i = 0; i < totalPapers; i++) {
+                const paper = document.getElementById(`paper-${i}`);
+                if (isFlipped) {
+                    paper.classList.add('flipped');
+                    paper.style.zIndex = i + 1;
+                } else {
+                    paper.classList.remove('flipped');
+                    paper.style.zIndex = totalPapers - i;
+                }
+            }
+        }
+
+        function nextPage() {
+            if (currentMode === 'pedestrian') {
+                if (currentPaperIndex === 8) {
+                    triggerStoryEnd();
+                    return;
+                }
+                if (currentPaperIndex < totalPapers) {
+                    const paper = document.getElementById(`paper-${currentPaperIndex}`);
+                    paper.classList.add('flipped');
+                    setTimeout(() => { paper.style.zIndex = currentPaperIndex; }, 300);
+                    currentPaperIndex++;
+                }
+            } else {
+                if (currentPaperIndex === 8) {
+                    triggerStoryEnd();
+                    return;
+                }
+                if (currentPaperIndex > 0) {
+                    currentPaperIndex--;
+                    const paper = document.getElementById(`paper-${currentPaperIndex}`);
+                    paper.classList.remove('flipped');
+                    paper.style.zIndex = totalPapers - currentPaperIndex;
+                }
+            }
+        }
+
+        function prevPage() {
+            if (currentMode === 'pedestrian') {
+                if (currentPaperIndex > 0) {
+                    currentPaperIndex--;
+                    const paper = document.getElementById(`paper-${currentPaperIndex}`);
+                    paper.classList.remove('flipped');
+                    paper.style.zIndex = totalPapers - currentPaperIndex;
+                }
+            } else {
+                if (currentPaperIndex < totalPapers) {
+                    const paper = document.getElementById(`paper-${currentPaperIndex}`);
+                    paper.classList.add('flipped');
+                    setTimeout(() => { paper.style.zIndex = currentPaperIndex; }, 300);
+                    currentPaperIndex++;
+                }
+            }
+        }
+
+        function triggerStoryEnd() {
+            stopAutoplay(); 
+            const bookContainer = document.getElementById('book');
+            bookContainer.style.opacity = 0; 
+            setTimeout(() => { resetBook(); }, 600); 
+        }
+
+        function resetBook() {
+            stopAutoplay();
+            document.getElementById('auto-toggle').checked = false; 
+            document.getElementById('entrance').style.display = 'block';
+            document.getElementById('panel').style.display = 'none';
+            document.getElementById('controls-bar').style.display = 'none'; 
+            document.getElementById('book').style.display = 'none';
+            document.getElementById('book').style.opacity = 1;
+            renderBook(); 
+        }
+
+        document.getElementById('auto-toggle').addEventListener('change', function() {
+            if (this.checked) {
+                document.getElementById('mode-text').innerText = "自動翻頁中";
+                document.getElementById('mode-text').style.color = "#bfa15f";
+                autoInterval = setInterval(() => { nextPage(); }, 4000); 
+            } else {
+                stopAutoplay();
+            }
+        });
+
+        function stopAutoplay() {
+            document.getElementById('mode-text').innerText = "自動翻頁";
+            document.getElementById('mode-text').style.color = "#aaa";
+            if (autoInterval) clearInterval(autoInterval);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('book').style.display === 'block') {
+                if (e.key === 'ArrowRight') nextPage();
+                if (e.key === 'ArrowLeft') prevPage();
+            }
+        });
+
+        renderBook();
+    </script>
+</body>
+</html>
